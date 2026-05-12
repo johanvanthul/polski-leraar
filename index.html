@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Polski">
+<meta name="theme-color" content="#0D1117">
+<title>Polski Leraar</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0D1117; --surface: #161B22; --card: #1C2333; --card-hover: #243044;
+  --accent: #E8634A; --accent-soft: rgba(232,99,74,.15);
+  --green: #2EAD6D; --green-soft: rgba(46,173,109,.15);
+  --red: #E5534B; --red-soft: rgba(229,83,75,.15);
+  --yellow: #E6A817; --blue: #4A90D9; --purple: #7B61FF;
+  --text: #E6EDF3; --text-muted: #8B949E; --text-dim: #484F58;
+  --border: #21262D;
+  --font: 'DM Sans', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100dvh; max-width: 480px; margin: 0 auto; overflow-x: hidden; padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+button { font-family: var(--font); cursor: pointer; border: none; outline: none; -webkit-appearance: none; }
+input, select { font-family: var(--font); outline: none; -webkit-appearance: none; }
+.screen { display: none; padding: 24px 20px 100px; animation: fadeIn .35s ease; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes correctFlash { 0% { box-shadow: 0 0 0 0 rgba(46,173,109,.5); } 100% { box-shadow: 0 0 40px 10px rgba(46,173,109,0); } }
+@keyframes wrongShake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+.anim-slide { animation: slideUp .3s ease; }
+.anim-correct { animation: correctFlash .5s ease; }
+.anim-wrong { animation: wrongShake .4s ease; }
+.pill { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: transparent; color: var(--text-muted); white-space: nowrap; transition: all .2s; }
+.pill.active { background: var(--accent-soft); color: var(--accent); }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.big-btn { display: flex; align-items: center; gap: 14px; padding: 18px 22px; border-radius: 18px; color: white; text-align: left; width: 100%; transition: transform .15s, opacity .15s; }
+.big-btn:active { transform: scale(.97); opacity: .9; }
+.answer-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px; border-radius: 18px; font-size: 14px; font-weight: 600; }
+.progress-bar { height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+.stat-box { background: var(--surface); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); }
+.stat-box .val { font-size: 22px; font-weight: 800; }
+.stat-box .label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.word-item { background: var(--surface); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; }
+.word-item.trouble { border-color: rgba(229,83,75,.2); }
+.badge { font-size: 10px; padding: 2px 6px; border-radius: 8px; font-weight: 700; font-family: var(--mono); }
+.grammar-box { text-align: left; padding: 12px 14px; border-radius: 12px; background: rgba(230,168,23,.07); border: 1px solid rgba(230,168,23,.2); margin-top: 10px; }
+.grammar-box .title { font-size: 11px; font-weight: 700; color: var(--yellow); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
+.grammar-box .body { font-size: 12px; color: var(--text); line-height: 1.6; }
+.example-box { text-align: left; padding: 12px 14px; background: var(--surface); border-radius: 12px; margin-top: 10px; }
+.example-box .pl { font-size: 14px; font-weight: 600; }
+.example-box .nl { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.mode-badge { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 8px; background: var(--card); font-size: 11px; color: var(--text-muted); }
+.settings-section { margin-bottom: 28px; }
+.settings-section-title { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.setting-row:last-child { border-bottom: none; }
+.setting-row .label { font-size: 14px; }
+.setting-row .sublabel { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.setting-row input[type=range] { width: 100px; accent-color: var(--accent); }
+.setting-row select { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.toggle { position: relative; width: 48px; height: 28px; background: var(--text-dim); border-radius: 14px; transition: background .2s; cursor: pointer; flex-shrink: 0; }
+.toggle.on { background: var(--green); }
+.toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; background: white; border-radius: 50%; transition: transform .2s; }
+.toggle.on::after { transform: translateX(20px); }
+.data-btn { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; transition: all .15s; }
+.data-btn:active { transform: scale(.96); }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+    <div>
+      <div style="font-size:13px;color:var(--text-muted);font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Polski Leraar</div>
+      <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Cześć, Johan! 🇵🇱</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
+      <button class="icon-btn" onclick="showScreen('progress')">📊</button>
+      <button class="icon-btn" onclick="showScreen('words')">📚</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+    <div style="background:var(--accent-soft);border-radius:16px;padding:18px 16px;border:1px solid rgba(232,99,74,.2)">
+      <div id="home-streak" style="font-size:32px;font-weight:800;color:var(--accent)">0 🔥</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">dag streak</div>
+    </div>
+    <div style="background:var(--green-soft);border-radius:16px;padding:18px 16px;border:1px solid rgba(46,173,109,.2)">
+      <div id="home-mastered" style="font-size:32px;font-weight:800;color:var(--green)">0</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">woorden geleerd</div>
+    </div>
+  </div>
+  <div id="daily-goal-card" style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:22px 20px;margin-bottom:24px;border:1px solid var(--border);position:relative;overflow:hidden">
+    <div style="position:absolute;top:-20px;right:-20px;font-size:80px;opacity:.06" id="daily-goal-icon">🎯</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:14px;color:var(--text-muted)">Doel vandaag</div>
+      <div id="daily-goal-badge" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px"></div>
+    </div>
+    <div style="font-size:32px;font-weight:800;margin-bottom:8px"><span id="daily-done">0</span><span style="font-size:18px;color:var(--text-muted);font-weight:500">/<span id="daily-target">20</span></span></div>
+    <div class="progress-bar"><div id="daily-bar" class="progress-bar-fill" style="width:0"></div></div>
+    <div id="daily-msg" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
+  </div>
+  <div id="due-info" style="display:none;align-items:center;gap:10px;padding:12px 16px;margin-bottom:16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);font-size:13px;color:var(--text-muted)">
+    <span style="font-size:18px">🔁</span> <span><strong id="due-count" style="color:var(--text)">0</strong> woorden wachten op herhaling</span>
+  </div>
+  <div id="home-cats" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;padding-bottom:4px"></div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <button id="btn-flash" class="big-btn" onclick="startSession('flashcard')" style="background:linear-gradient(135deg,var(--accent),#D4543E)">
+      <span style="font-size:20px">🃏</span>
+      <div><div style="font-size:16px;font-weight:700">Flashcards</div><div style="font-size:12px;opacity:.8">~10 woorden · herken & flip</div></div>
+    </button>
+    <button id="btn-type" class="big-btn" onclick="startSession('type')" style="background:linear-gradient(135deg,var(--purple),#6247E5)">
+      <span style="font-size:20px">⌨️</span>
+      <div><div style="font-size:16px;font-weight:700">Typ het antwoord</div><div style="font-size:12px;opacity:.8">~10 woorden · actiever leren</div></div>
+    </button>
+  </div>
+  <div style="margin-top:24px;padding:16px 18px;background:var(--surface);border-radius:14px;border:1px solid var(--border);font-size:13px;color:var(--text-muted);line-height:1.6">
+    💡 <strong style="color:var(--text)">Tip:</strong> Mix flashcards en typen. Herkennen bouwt begrip, typen bouwt actieve kennis.
+  </div>
+</div>
+
+<!-- SESSION -->
+<div id="session" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <button class="icon-btn" onclick="endSession()" style="font-size:14px">✕</button>
+    <div style="flex:1;margin:0 16px"><div class="progress-bar"><div id="sess-bar" class="progress-bar-fill" style="background:linear-gradient(90deg,var(--accent),var(--yellow));width:0"></div></div></div>
+    <div id="sess-count" style="font-size:14px;color:var(--text-muted);font-family:var(--mono)">1/10</div>
+  </div>
+  <div id="sess-direction" style="text-align:center;margin-bottom:12px"></div>
+  <div id="sess-retry-banner" style="display:none;text-align:center;margin-bottom:12px"><span style="font-size:11px;color:var(--yellow);background:rgba(230,168,23,.1);padding:4px 12px;border-radius:20px;font-weight:600">🔁 Herhalingsronde</span></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;min-height:60vh">
+    <div id="sess-card" style="background:var(--card);border-radius:24px;padding:40px 28px;text-align:center;border:1px solid var(--border);position:relative;min-height:240px;display:flex;flex-direction:column;justify-content:center" onclick="handleCardTap()">
+      <div id="sess-cat-badge" style="position:absolute;top:16px;left:18px;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600"></div>
+      <div id="sess-diff" style="position:absolute;top:16px;right:18px;display:flex;gap:3px"></div>
+      <div id="sess-question" style="font-size:32px;font-weight:800;letter-spacing:-.5px"></div>
+      <div id="sess-tap-hint" style="font-size:14px;color:var(--text-muted);margin-top:12px">tap om te zien</div>
+      <div id="sess-answer-area" style="display:none"></div>
+      <div id="sess-type-area" style="display:none;margin-top:20px"></div>
+      <div id="sess-info-area" style="display:none"></div>
+    </div>
+    <div id="sess-flash-btns" style="display:none;gap:12px;margin-top:24px" class="anim-slide">
+      <button class="answer-btn" onclick="handleAnswer(false)" style="background:var(--red-soft);color:var(--red);border:2px solid rgba(229,83,75,.2)">
+        <span style="font-size:22px">✗</span><span>Wist ik niet</span>
+      </button>
+      <button class="answer-btn" onclick="handleAnswer(true)" style="background:var(--green-soft);color:var(--green);border:2px solid rgba(46,173,109,.2)">
+        <span style="font-size:22px">✓</span><span>Wist ik!</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen" style="text-align:center;padding-top:40px">
+  <div id="res-emoji" style="font-size:60px;margin-bottom:16px"></div>
+  <div style="font-size:28px;font-weight:800;margin-bottom:8px">Sessie klaar!</div>
+  <div id="res-score-text" style="font-size:16px;color:var(--text-muted);margin-bottom:32px"></div>
+  <div style="position:relative;width:140px;height:140px;margin:0 auto 32px">
+    <svg width="140" height="140" viewBox="0 0 140 140">
+      <circle cx="70" cy="70" r="60" fill="none" stroke="var(--surface)" stroke-width="10"/>
+      <circle id="res-ring" cx="70" cy="70" r="60" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 377" transform="rotate(-90 70 70)" style="transition:stroke-dasharray 1s ease"/>
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div id="res-pct" style="font-size:32px;font-weight:800"></div></div>
+  </div>
+  <div id="res-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px"></div>
+  <div id="res-new-words" style="display:none;background:var(--accent-soft);border-radius:16px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(232,99,74,.2);text-align:left"></div>
+  <div id="res-daily" style="background:var(--surface);border-radius:16px;padding:16px 20px;margin-bottom:24px;border:1px solid var(--border);text-align:left"></div>
+  <button id="res-btn" class="big-btn" style="justify-content:center;width:100%" onclick="showScreen('home')"></button>
+</div>
+
+<!-- PROGRESS -->
+<div id="progress" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+    <button class="icon-btn" onclick="showScreen('home')">←</button>
+    <div style="font-size:22px;font-weight:800">Voortgang</div>
+  </div>
+  <div id="prog-content"></div>
+</div>
+
+<!-- WORDS -->
+<div id="words" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <button class="icon-btn" onclick="showScreen('home')">←</button>
+    <div style="font-size:22px;font-weight:800">Woordenlijst</div>
+    <div id="words-count" style="margin-left:auto;font-size:13px;color:var(--text-muted)"></div>
+  </div>
+  <div id="words-cats" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px"></div>
+  <div id="words-list" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+    <button class="icon-btn" onclick="saveSettings();showScreen('home')">←</button>
+    <div style="font-size:22px;font-weight:800">Instellingen</div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">🎯 Leerdoelen</div>
+    <div class="setting-row">
+      <div><div class="label">Dagelijks doel</div><div class="sublabel">Woorden per dag</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="range" id="set-daily" min="5" max="50" step="5" value="20" oninput="document.getElementById('set-daily-val').textContent=this.value">
+        <span id="set-daily-val" style="font-family:var(--mono);font-size:14px;min-width:24px;text-align:right">20</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><div class="label">Sessiegrootte</div><div class="sublabel">Woorden per sessie</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="range" id="set-session" min="5" max="20" step="1" value="10" oninput="document.getElementById('set-session-val').textContent=this.value">
+        <span id="set-session-val" style="font-family:var(--mono);font-size:14px;min-width:24px;text-align:right">10</span>
+      </div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">🃏 Oefenmodus</div>
+    <div class="setting-row">
+      <div><div class="label">Richting</div><div class="sublabel">Hoe woorden worden getoond</div></div>
+      <select id="set-direction" style="min-width:130px">
+        <option value="mix">Mix (willekeurig)</option>
+        <option value="pl-nl">Pools → Nederlands</option>
+        <option value="nl-pl">Nederlands → Pools</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <div><div class="label">Foute woorden herhalen</div><div class="sublabel">Extra ronde na sessie</div></div>
+      <div id="set-retry" class="toggle on" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-row">
+      <div><div class="label">Grammatica tonen</div><div class="sublabel">Tips na elk antwoord</div></div>
+      <div id="set-grammar" class="toggle on" onclick="toggleSetting(this)"></div>
+    </div>
+    <div class="setting-row">
+      <div><div class="label">Voorbeeldzinnen</div><div class="sublabel">Context na elk antwoord</div></div>
+      <div id="set-examples" class="toggle on" onclick="toggleSetting(this)"></div>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">🔔 Herinneringen</div>
+    <div class="setting-row">
+      <div><div class="label">Dagelijkse reminder</div><div class="sublabel">Push-notificatie</div></div>
+      <div id="set-remind" class="toggle" onclick="toggleReminder(this)"></div>
+    </div>
+    <div id="remind-time-row" class="setting-row" style="display:none">
+      <div><div class="label">Tijdstip</div></div>
+      <input type="time" id="set-remind-time" value="20:00" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px;font-family:var(--font)">
+    </div>
+    <div id="remind-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;padding:0 2px"></div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">💾 Data</div>
+    <div class="setting-row">
+      <div><div class="label">Voortgang exporteren</div><div class="sublabel">Download als JSON</div></div>
+      <button onclick="exportData()" class="data-btn" style="background:var(--accent-soft);color:var(--accent)">Exporteer</button>
+    </div>
+    <div class="setting-row">
+      <div><div class="label">Voortgang importeren</div><div class="sublabel">Laad eerder export</div></div>
+      <button onclick="document.getElementById('import-file').click()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue)">Importeer</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+    <div class="setting-row" style="border:none">
+      <div><div class="label" style="color:var(--red)">Alle voortgang resetten</div><div class="sublabel">Kan niet ongedaan worden</div></div>
+      <button onclick="resetAllData()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Reset</button>
+    </div>
+  </div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v2.0</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// WORD DATABASE
+// ═══════════════════════════════════════
+const CATEGORIES = {
+  familie: { label:'Familie', emoji:'👨‍👩‍👧‍👦', color:'#E8634A' },
+  dagelijks: { label:'Dagelijks', emoji:'🏠', color:'#4A90D9' },
+  meningen: { label:'Meningen', emoji:'💬', color:'#7B61FF' },
+  reizen: { label:'Reizen', emoji:'✈️', color:'#2EAD6D' },
+  eten: { label:'Eten', emoji:'🍽️', color:'#E6A817' },
+};
+
+const WORD_DB = [
+  {id:1,pl:"rozumieć",nl:"begrijpen",cat:"familie",ex_pl:"Rozumiem, co mówisz",ex_nl:"Ik begrijp wat je zegt",diff:1,gram:"Ik-vorm: rozumiem. 'Nie rozumiem' = ik begrijp het niet. Super handig als basiszin!"},
+  {id:2,pl:"opowiadać",nl:"vertellen",cat:"familie",ex_pl:"Opowiedz mi o swojej pracy",ex_nl:"Vertel me over je werk",diff:2,gram:"'Opowiedz' is de gebiedende wijs (vertel!). Altijd met 'o' + naamval: opowiadać o czymś."},
+  {id:3,pl:"spotkanie",nl:"ontmoeting/afspraak",cat:"familie",ex_pl:"Mamy spotkanie rodzinne w niedzielę",ex_nl:"We hebben zondag een familiebijeenkomst",diff:1,gram:"Zelfstandig naamwoord (onzijdig). Meervoud: spotkania. Komt van 'spotykać się' (ontmoeten)."},
+  {id:4,pl:"tęsknić",nl:"missen (iemand)",cat:"familie",ex_pl:"Tęsknię za wami",ex_nl:"Ik mis jullie",diff:2,gram:"Altijd met 'za' + naamval: tęsknię za tobą (jou), za wami (jullie), za domem (thuis)."},
+  {id:5,pl:"wspólnie",nl:"samen/gezamenlijk",cat:"familie",ex_pl:"Zróbmy to wspólnie",ex_nl:"Laten we het samen doen",diff:2,gram:"Bijwoord — verandert niet. Alternatief: 'razem' (meer casual, zelfde betekenis)."},
+  {id:6,pl:"wychowywać",nl:"opvoeden",cat:"familie",ex_pl:"Wychowujemy dwoje dzieci",ex_nl:"We voeden twee kinderen op",diff:3,gram:"'Dwoje dzieci' — bij kinderen gebruik je 'dwoje' i.p.v. 'dwa'. Pools telt kinderen anders!"},
+  {id:7,pl:"zgadzać się",nl:"het eens zijn",cat:"familie",ex_pl:"Zgadzam się z tobą",ex_nl:"Ik ben het met je eens",diff:2,gram:"'Się' maakt het wederkerend. Met 'z' + persoon: z tobą (met jou), z mamą (met mama)."},
+  {id:8,pl:"martwić się",nl:"zich zorgen maken",cat:"familie",ex_pl:"Nie martw się o to",ex_nl:"Maak je er geen zorgen over",diff:2,gram:"'Nie martw się' (maak je geen zorgen) — onthoud als vaste uitdrukking. Met 'o' + iets."},
+  {id:9,pl:"cieszyć się",nl:"blij zijn/zich verheugen",cat:"familie",ex_pl:"Cieszę się, że przyjechaliście",ex_nl:"Ik ben blij dat jullie gekomen zijn",diff:2,gram:"Vaak gevolgd door 'że' (dat): Cieszę się, że... Heel veel gebruikt!"},
+  {id:10,pl:"przepraszać",nl:"je excuseren",cat:"familie",ex_pl:"Przepraszam za spóźnienie",ex_nl:"Sorry voor het te laat komen",diff:1,gram:"'Przepraszam' werkt als 'sorry', 'pardon' én 'excuseer me'. Met 'za' + reden."},
+  {id:11,pl:"potrzebować",nl:"nodig hebben",cat:"dagelijks",ex_pl:"Potrzebuję pomocy",ex_nl:"Ik heb hulp nodig",diff:1,gram:"Ik-vorm: potrzebuję. Het woord erna staat in de 2e naamval: pomocy (van pomoc)."},
+  {id:12,pl:"załatwiać",nl:"regelen/afhandelen",cat:"dagelijks",ex_pl:"Muszę załatwić kilka spraw",ex_nl:"Ik moet een paar dingen regelen",diff:3,gram:"'Załatwić' = voltooide vorm (één keer). 'Załatwiać' = onvoltooide (bezig met). Begin met załatwić."},
+  {id:13,pl:"sprzątać",nl:"schoonmaken",cat:"dagelijks",ex_pl:"Muszę posprzątać kuchnię",ex_nl:"Ik moet de keuken schoonmaken",diff:2,gram:"'Po-' ervoor maakt het af: sprzątać (bezig), posprzątać (helemaal schoon). Veel werkwoorden werken zo!"},
+  {id:14,pl:"gotować",nl:"koken",cat:"dagelijks",ex_pl:"Lubię gotować polskie jedzenie",ex_nl:"Ik hou van Pools eten koken",diff:1,gram:"Na 'lubię' (ik hou van) komt altijd de hele werkwoordvorm: lubię gotować, lubię jeść."},
+  {id:15,pl:"zakupy",nl:"boodschappen",cat:"dagelijks",ex_pl:"Muszę zrobić zakupy",ex_nl:"Ik moet boodschappen doen",diff:1,gram:"Altijd meervoud. Vaste combo: 'robić zakupy' (boodschappen doen)."},
+  {id:16,pl:"zepsuć się",nl:"kapotgaan",cat:"dagelijks",ex_pl:"Samochód się zepsuł",ex_nl:"De auto is kapotgegaan",diff:3,gram:"'Się zepsuł' (verleden, mannelijk). Vrouwelijk: zepsuła się."},
+  {id:17,pl:"naprawiać",nl:"repareren",cat:"dagelijks",ex_pl:"Mogę to naprawić",ex_nl:"Ik kan dat repareren",diff:2,gram:"'Mogę' + heel werkwoord: mogę naprawić, mogę pomóc. Heel nuttig patroon!"},
+  {id:18,pl:"przenosić się",nl:"verhuizen",cat:"dagelijks",ex_pl:"Przenieśliśmy się do nowego domu",ex_nl:"We zijn naar een nieuw huis verhuisd",diff:3,gram:"'-liśmy' = wij-vorm verleden tijd. 'Do' + 2e naamval voor richting."},
+  {id:19,pl:"spieszyć się",nl:"haast hebben",cat:"dagelijks",ex_pl:"Spieszę się do pracy",ex_nl:"Ik heb haast naar mijn werk",diff:2,gram:"'Do' + plek = naartoe: do pracy (naar werk), do domu (naar huis)."},
+  {id:20,pl:"odpoczywać",nl:"rusten/uitrusten",cat:"dagelijks",ex_pl:"Chcę trochę odpocząć",ex_nl:"Ik wil even uitrusten",diff:1,gram:"'Chcę' (ik wil) + heel werkwoord. 'Trochę' = een beetje/even."},
+  {id:21,pl:"uważać",nl:"vinden/van mening zijn",cat:"meningen",ex_pl:"Uważam, że to dobry pomysł",ex_nl:"Ik vind dat het een goed idee is",diff:2,gram:"'Uważam, że...' = ik vind dat... Let op: ook 'oppassen': uważaj! (pas op!)"},
+  {id:22,pl:"wolę",nl:"ik geef de voorkeur",cat:"meningen",ex_pl:"Wolę herbatę niż kawę",ex_nl:"Ik heb liever thee dan koffie",diff:1,gram:"Vergelijk met 'niż' (dan): wolę X niż Y. Simpel en heel bruikbaar!"},
+  {id:23,pl:"niestety",nl:"helaas",cat:"meningen",ex_pl:"Niestety nie mogę przyjść",ex_nl:"Helaas kan ik niet komen",diff:1,gram:"Bijwoord — verandert nooit. Klinkt beleefd en volwassen."},
+  {id:24,pl:"właściwie",nl:"eigenlijk",cat:"meningen",ex_pl:"Właściwie masz rację",ex_nl:"Eigenlijk heb je gelijk",diff:2,gram:"Bijwoord. Perfect als 'filler' om tijd te kopen in een gesprek!"},
+  {id:25,pl:"zdecydować",nl:"beslissen",cat:"meningen",ex_pl:"Nie mogę się zdecydować",ex_nl:"Ik kan niet beslissen",diff:2,gram:"'Nie mogę się zdecydować' — onthoud als vaste frase."},
+  {id:26,pl:"wątpić",nl:"twijfelen",cat:"meningen",ex_pl:"Wątpię, czy to prawda",ex_nl:"Ik twijfel of dat waar is",diff:3,gram:"'Czy' na 'wątpię' = of. 'Czy' wordt ook als vraagwoord gebruikt."},
+  {id:27,pl:"obiecywać",nl:"beloven",cat:"meningen",ex_pl:"Obiecuję, że przyjdę",ex_nl:"Ik beloof dat ik kom",diff:2,gram:"'Obiecuję, że...' = ik beloof dat... 'Że' verbindt twee zinsdelen."},
+  {id:28,pl:"narzekać",nl:"klagen",cat:"meningen",ex_pl:"Nie lubię narzekać",ex_nl:"Ik hou niet van klagen",diff:2,gram:"Met 'na' + onderwerp: narzekać na pogodę (klagen over het weer)."},
+  {id:29,pl:"dziwić się",nl:"verbaasd zijn",cat:"meningen",ex_pl:"Dziwię się, że tego nie wiedziałeś",ex_nl:"Ik ben verbaasd dat je dat niet wist",diff:3,gram:"'Wiedziałeś' = je wist (man). Vrouw: wiedziałaś. Eindigt op geslacht."},
+  {id:30,pl:"podobać się",nl:"leuk vinden/bevallen",cat:"meningen",ex_pl:"Podoba mi się to miejsce",ex_nl:"Ik vind deze plek leuk",diff:2,gram:"Omgekeerde constructie! 'Podoba MI się' = het bevalt MIJ."},
+  {id:31,pl:"rezerwować",nl:"reserveren",cat:"reizen",ex_pl:"Chcę zarezerwować stolik",ex_nl:"Ik wil een tafel reserveren",diff:1,gram:"'Za-' voorvoegsel maakt het af. Chcę + heel werkwoord."},
+  {id:32,pl:"wskazówka",nl:"aanwijzing/tip",cat:"reizen",ex_pl:"Czy możesz mi dać wskazówkę?",ex_nl:"Kun je me een aanwijzing geven?",diff:2,gram:"Vrouwelijk. Meervoud: wskazówki. 'Dać' = geven (voltooid)."},
+  {id:33,pl:"zwiedzać",nl:"bezichtigen",cat:"reizen",ex_pl:"Chcemy zwiedzić zamek",ex_nl:"We willen het kasteel bezichtigen",diff:2,gram:"'Chcemy' = wij willen. Vervoegingen: chcę, chcesz, chce, chcemy."},
+  {id:34,pl:"polecać",nl:"aanraden",cat:"reizen",ex_pl:"Co polecasz na obiad?",ex_nl:"Wat raad je aan voor het diner?",diff:2,gram:"'Co polecasz?' is een perfecte restaurantzin."},
+  {id:35,pl:"tłumaczyć",nl:"vertalen/uitleggen",cat:"reizen",ex_pl:"Czy możesz mi to przetłumaczyć?",ex_nl:"Kun je dit voor me vertalen?",diff:2,gram:"'Prze-' voorvoegsel = voltooien. 'Mi' = voor mij."},
+  {id:36,pl:"smacznego",nl:"eet smakelijk",cat:"eten",ex_pl:"Smacznego!",ex_nl:"Eet smakelijk!",diff:1,gram:"Vaste uitdrukking — onthoud als geheel!"},
+  {id:37,pl:"przepis",nl:"recept",cat:"eten",ex_pl:"Daj mi przepis na bigos",ex_nl:"Geef me het recept voor bigos",diff:1,gram:"'Przepis na...' = recept voor... 'Daj mi' = geef me."},
+  {id:38,pl:"przyprawy",nl:"kruiden",cat:"eten",ex_pl:"Dodaj więcej przypraw",ex_nl:"Voeg meer kruiden toe",diff:2,gram:"'Więcej' + 2e naamval meervoud: więcej przypraw, więcej czasu."},
+  {id:39,pl:"piekarnia",nl:"bakkerij",cat:"eten",ex_pl:"Idę do piekarni po chleb",ex_nl:"Ik ga naar de bakkerij voor brood",diff:1,gram:"'Po' + iets = om te halen: po chleb, po mleko, po dzieci."},
+  {id:40,pl:"nalewka",nl:"likeur/tinctuur",cat:"eten",ex_pl:"Spróbuj domowej nalewki",ex_nl:"Probeer de zelfgemaakte likeur",diff:2,gram:"'Spróbuj' = probeer (gebiedende wijs)."},
+  {id:41,pl:"pogoda",nl:"weer",cat:"dagelijks",ex_pl:"Jaka jest dzisiaj pogoda?",ex_nl:"Hoe is het weer vandaag?",diff:1,gram:"'Jaka' = hoe/welke (vrouwelijk). 'Jaki' mannelijk, 'jakie' onzijdig."},
+  {id:42,pl:"burza",nl:"storm/onweer",cat:"dagelijks",ex_pl:"Będzie burza wieczorem",ex_nl:"Er komt vanavond storm",diff:2,gram:"'Będzie' = er zal zijn. Simpele toekomst: będzie padać (het gaat regenen)."},
+  {id:43,pl:"w każdym razie",nl:"in ieder geval",cat:"meningen",ex_pl:"W każdym razie, dziękuję",ex_nl:"In ieder geval, bedankt",diff:2,gram:"Vaste uitdrukking. Perfect om een gesprek af te sluiten."},
+  {id:44,pl:"szczerze mówiąc",nl:"eerlijk gezegd",cat:"meningen",ex_pl:"Szczerze mówiąc, nie wiem",ex_nl:"Eerlijk gezegd, ik weet het niet",diff:2,gram:"Onthoud als vaste frase aan het begin van een zin."},
+  {id:45,pl:"na przykład",nl:"bijvoorbeeld",cat:"meningen",ex_pl:"Na przykład, możemy iść do parku",ex_nl:"Bijvoorbeeld, we kunnen naar het park gaan",diff:1,gram:"'Iść' = gaan (te voet). 'Jechać' = gaan (met vervoer)."},
+  {id:46,pl:"zależy",nl:"het hangt ervan af",cat:"meningen",ex_pl:"To zależy od pogody",ex_nl:"Het hangt af van het weer",diff:1,gram:"'Zależy od' + 2e naamval: od pogody, od ciebie (van jou)."},
+  {id:47,pl:"dlatego",nl:"daarom",cat:"meningen",ex_pl:"Dlatego tak uważam",ex_nl:"Daarom vind ik dat",diff:1,gram:"Voegwoord — verandert nooit. Heel nuttig om je punt te maken!"},
+  {id:48,pl:"chodzi o to, że",nl:"het gaat erom dat",cat:"meningen",ex_pl:"Chodzi o to, że nie mam czasu",ex_nl:"Het gaat erom dat ik geen tijd heb",diff:3,gram:"'Nie mam' = ik heb niet (van 'mieć'). 'Czasu' is 2e naamval van 'czas'."},
+  {id:49,pl:"trening",nl:"training",cat:"dagelijks",ex_pl:"Idę na trening piłki nożnej",ex_nl:"Ik ga naar voetbaltraining",diff:1,gram:"'Na trening' = naar de training. 'Piłka nożna' = voetbal."},
+  {id:50,pl:"wycieczka rowerowa",nl:"fietstocht",cat:"reizen",ex_pl:"Zróbmy wycieczkę rowerową",ex_nl:"Laten we een fietstocht maken",diff:2,gram:"'Zróbmy' = laten we doen (wij-gebiedende wijs)."},
+  {id:101,pl:"pomagać",nl:"helpen",cat:"familie",ex_pl:"Mogę ci pomóc",ex_nl:"Ik kan je helpen",diff:1,gram:"'Ci' = jou (kort). 'Pomóc' is de voltooide vorm.",pool:true},
+  {id:102,pl:"starać się",nl:"proberen/zijn best doen",cat:"familie",ex_pl:"Staram się mówić po polsku",ex_nl:"Ik probeer Pools te spreken",diff:2,gram:"'Po polsku' = in het Pools. 'Po angielsku' = in het Engels.",pool:true},
+  {id:103,pl:"zapraszać",nl:"uitnodigen",cat:"familie",ex_pl:"Zapraszam was na obiad",ex_nl:"Ik nodig jullie uit voor het diner",diff:2,gram:"'Zapraszam' is ook 'welkom/kom binnen'.",pool:true},
+  {id:104,pl:"wystarczy",nl:"het is genoeg",cat:"dagelijks",ex_pl:"Wystarczy, dziękuję",ex_nl:"Het is genoeg, bedankt",diff:1,gram:"Onpersoonlijk — altijd deze vorm. Handig aan tafel!",pool:true},
+  {id:105,pl:"szkoda",nl:"jammer",cat:"meningen",ex_pl:"Szkoda, że nie możesz przyjść",ex_nl:"Jammer dat je niet kunt komen",diff:1,gram:"'Szkoda, że...' = jammer dat... Heel bruikbaar!",pool:true},
+  {id:106,pl:"spokojnie",nl:"rustig aan",cat:"familie",ex_pl:"Spokojnie, wszystko będzie dobrze",ex_nl:"Rustig aan, alles komt goed",diff:1,gram:"'Wszystko będzie dobrze' = alles komt goed — vaste frase!",pool:true},
+  {id:107,pl:"zmęczony",nl:"moe",cat:"dagelijks",ex_pl:"Jestem bardzo zmęczony",ex_nl:"Ik ben erg moe",diff:1,gram:"Man: zmęczony. Vrouw: zmęczona. 'Bardzo' = erg/zeer.",pool:true},
+  {id:108,pl:"spóźnić się",nl:"te laat komen",cat:"dagelijks",ex_pl:"Przepraszam, spóźniłem się",ex_nl:"Sorry, ik ben te laat",diff:2,gram:"'-łem' = ik (man) verleden. Vrouw: spóźniłam się.",pool:true},
+  {id:109,pl:"świętować",nl:"vieren",cat:"familie",ex_pl:"Świętujemy urodziny babci",ex_nl:"We vieren oma's verjaardag",diff:2,gram:"'Urodziny' = verjaardag (altijd meervoud in het Pools!).",pool:true},
+  {id:110,pl:"przypominać",nl:"herinneren",cat:"familie",ex_pl:"Przypomnij mi jutro",ex_nl:"Herinner me er morgen aan",diff:2,gram:"'Przypomnij' = herinner (gebiedende wijs). 'Jutro' = morgen.",pool:true},
+  {id:111,pl:"odkryć",nl:"ontdekken",cat:"reizen",ex_pl:"Odkryliśmy piękną restaurację",ex_nl:"We hebben een mooi restaurant ontdekt",diff:2,gram:"'-liśmy' = wij (verleden). Beide woorden in 4e naamval.",pool:true},
+  {id:112,pl:"okazja",nl:"gelegenheid/aanbieding",cat:"reizen",ex_pl:"To świetna okazja!",ex_nl:"Dat is een geweldige aanbieding!",diff:2,gram:"'Świetna' = geweldige (vrouwelijk, want okazja is vrouwelijk).",pool:true},
+  {id:113,pl:"żałować",nl:"spijt hebben",cat:"meningen",ex_pl:"Żałuję, że tego nie zrobiłem",ex_nl:"Ik heb spijt dat ik het niet gedaan heb",diff:3,gram:"'Żałuję, że...' Man: zrobiłem. Vrouw: zrobiłam.",pool:true},
+  {id:114,pl:"przyzwyczaić się",nl:"wennen aan",cat:"dagelijks",ex_pl:"Przyzwyczaiłem się do tego",ex_nl:"Ik ben eraan gewend",diff:3,gram:"'-łem' = ik (man). Met 'do' + 2e naamval.",pool:true},
+  {id:115,pl:"wygodny",nl:"comfortabel",cat:"dagelijks",ex_pl:"To bardzo wygodne krzesło",ex_nl:"Dat is een comfortabele stoel",diff:1,gram:"'Wygodny' (m), 'wygodna' (v), 'wygodne' (o) — past zich aan.",pool:true},
+];
+
+// ═══════════════════════════════════════
+// SRS ENGINE + STATE + STORAGE
+// ═══════════════════════════════════════
+const SRS = {
+  intervals: [0,1,3,7,14,30,60],
+  getNextReview(c) {
+    const iv = this.intervals[Math.min(c.box, 6)];
+    const mf = (c.misses||0) > 3 ? .5 : (c.misses||0) > 1 ? .75 : 1;
+    return c.lastReview + Math.floor(iv * mf) * 864e5;
+  },
+  requiredStreak(m) { return m >= 5 ? 4 : m >= 3 ? 3 : m >= 1 ? 2 : 1; },
+  promote(c, mode) {
+    const ns = c.streak + 1, ms = {...(c.modeStats||{flashcard:0,type:0})};
+    ms[mode] = (ms[mode]||0) + 1;
+    const needed = this.requiredStreak(c.misses||0);
+    if (ns >= needed) return {...c, box:Math.min(c.box+1,6), lastReview:Date.now(), reviews:c.reviews+1, streak:ns, misses:Math.max((c.misses||0)-1,0), modeStats:ms};
+    return {...c, lastReview:Date.now(), reviews:c.reviews+1, streak:ns, modeStats:ms};
+  },
+  demote(c, mode) {
+    const ms = {...(c.modeStats||{flashcard:0,type:0})};
+    ms[mode] = (ms[mode]||0) + 1;
+    return {...c, box:Math.max(c.box-2,0), lastReview:Date.now(), reviews:c.reviews+1, streak:0, misses:(c.misses||0)+1, modeStats:ms};
+  }
+};
+
+let cards = [];
+let stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:null};
+let settings = {dailyGoal:20, sessionSize:10, direction:'mix', retryWrong:true, showGrammar:true, showExamples:true, reminderEnabled:false, reminderTime:'20:00'};
+let selectedCat = 'all';
+let sess = {cards:[], idx:0, mode:'flashcard', dir:'pl-nl', showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[]};
+
+function save(k, v) { try { localStorage.setItem('polski_'+k, JSON.stringify(v)); } catch(e){} }
+function load(k) { try { const d = localStorage.getItem('polski_'+k); return d ? JSON.parse(d) : null; } catch(e) { return null; } }
+
+function initData() {
+  const sc = load('cards'), ss = load('stats'), se = load('settings');
+  if (se) settings = {...settings, ...se};
+  if (sc && sc.length) {
+    const ids = new Set(sc.map(c => c.id));
+    const fresh = WORD_DB.filter(w => !w.pool && !ids.has(w.id)).map(w => makeCard(w));
+    cards = sc.map(c => { const db = WORD_DB.find(w => w.id === c.id); return db ? {...c, gram:db.gram, ex_pl:db.ex_pl, ex_nl:db.ex_nl} : c; });
+    if (fresh.length) { cards = [...cards, ...fresh]; save('cards', cards); }
+  } else {
+    cards = WORD_DB.filter(w => !w.pool).map(w => makeCard(w));
+    save('cards', cards);
+  }
+  if (ss) stats = {...stats, ...ss};
+  const today = dateStr();
+  if (stats.todayDate && stats.todayDate !== today) {
+    stats.todayReviews = 0; stats.todayCorrect = 0; stats.todayDate = today; save('stats', stats);
+  } else if (!stats.todayDate) { stats.todayDate = today; save('stats', stats); }
+}
+
+function makeCard(w) {
+  return {id:w.id, pl:w.pl, nl:w.nl, cat:w.cat, ex_pl:w.ex_pl, ex_nl:w.ex_nl, diff:w.diff, gram:w.gram, box:0, lastReview:0, reviews:0, streak:0, misses:0, modeStats:{flashcard:0,type:0}, added:Date.now()};
+}
+function dateStr(ts) { return new Date(ts||Date.now()).toLocaleDateString('sv-SE'); }
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'home') renderHome();
+  if (id === 'progress') renderProgress();
+  if (id === 'words') renderWords();
+  if (id === 'settings') renderSettings();
+}
+function endSession() { showScreen('home'); }
+
+// ═══════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════
+function renderHome() {
+  const mastered = cards.filter(c => c.box >= 4).length;
+  const due = getDueCards().length;
+  const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
+  const goal = settings.dailyGoal;
+  const reached = done >= goal;
+
+  document.getElementById('home-streak').textContent = stats.streak + ' 🔥';
+  document.getElementById('home-mastered').textContent = mastered;
+  document.getElementById('daily-done').textContent = done;
+  document.getElementById('daily-target').textContent = goal;
+  document.getElementById('daily-bar').style.width = Math.min(done/goal*100,100)+'%';
+  document.getElementById('daily-bar').style.background = reached ? 'linear-gradient(90deg,var(--green),#3DD68C)' : 'linear-gradient(90deg,var(--accent),var(--yellow))';
+  document.getElementById('daily-goal-card').style.borderColor = reached ? 'rgba(46,173,109,.3)' : 'var(--border)';
+  document.getElementById('daily-goal-icon').textContent = reached ? '✅' : '🎯';
+
+  const badge = document.getElementById('daily-goal-badge');
+  badge.textContent = reached ? '✓ Gehaald!' : (goal - done) + ' te gaan';
+  badge.style.background = reached ? 'var(--green-soft)' : 'var(--accent-soft)';
+  badge.style.color = reached ? 'var(--green)' : 'var(--accent)';
+
+  const sessLeft = Math.ceil((goal-done)/settings.sessionSize);
+  document.getElementById('daily-msg').textContent = done === 0 ? 'Start je eerste sessie van vandaag!' : reached ? 'Top! Je kunt stoppen of bonuswoorden oefenen.' : 'Nog ' + sessLeft + ' sessie' + (sessLeft>1?'s':'') + ' van ~' + settings.sessionSize + ' woorden';
+
+  const dueEl = document.getElementById('due-info');
+  if (due > 0) { dueEl.style.display = 'flex'; document.getElementById('due-count').textContent = due; }
+  else { dueEl.style.display = 'none'; }
+
+  const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type');
+  if (reached) {
+    bf.style.background = bt.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
+    bf.querySelector('div div:first-child').textContent = 'Bonus Flashcards';
+    bt.querySelector('div div:first-child').textContent = 'Bonus Typen';
+  } else {
+    bf.style.background = 'linear-gradient(135deg,var(--accent),#D4543E)';
+    bt.style.background = 'linear-gradient(135deg,var(--purple),#6247E5)';
+    bf.querySelector('div div:first-child').textContent = 'Flashcards';
+    bt.querySelector('div div:first-child').textContent = 'Typ het antwoord';
+  }
+  renderCatPills('home-cats', selectedCat, function(c) { selectedCat = c; renderHome(); });
+}
+
+function renderCatPills(containerId, active, onClick) {
+  var el = document.getElementById(containerId); el.innerHTML = '';
+  var all = document.createElement('button'); all.className = 'pill' + (active==='all'?' active':''); all.textContent = 'Alles'; all.onclick = function(){onClick('all');}; el.appendChild(all);
+  Object.entries(CATEGORIES).forEach(function(e) { var b = document.createElement('button'); b.className = 'pill' + (active===e[0]?' active':''); b.textContent = e[1].emoji + ' ' + e[1].label; b.onclick = function(){onClick(e[0]);}; el.appendChild(b); });
+}
+
+function getDueCards() {
+  var now = Date.now();
+  return cards.filter(function(c){return SRS.getNextReview(c) <= now;}).filter(function(c){return selectedCat==='all'||c.cat===selectedCat;})
+    .sort(function(a,b){return (b.misses||0)-(a.misses||0) || a.box-b.box || a.lastReview-b.lastReview;});
+}
+
+// ═══════════════════════════════════════
+// SESSION
+// ═══════════════════════════════════════
+function startSession(mode) {
+  var due = getDueCards(), sz = settings.sessionSize, sel = due.slice(0, sz);
+  if (sel.length < sz) {
+    var ids = new Set(sel.map(function(c){return c.id;}));
+    var rest = cards.filter(function(c){return !ids.has(c.id) && (selectedCat==='all'||c.cat===selectedCat);})
+      .sort(function(a,b){ var am=(a.modeStats||{})[mode]||0, bm=(b.modeStats||{})[mode]||0; return am!==bm?am-bm:a.box-b.box; }).slice(0, sz - sel.length);
+    sel = sel.concat(rest);
+  }
+  shuffle(sel);
+  sess = {cards:sel, idx:0, mode:mode, dir:getDir(), showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[]};
+  showScreen('session'); renderSessionCard();
+}
+function getDir() { return settings.direction === 'mix' ? (Math.random() > .5 ? 'pl-nl' : 'nl-pl') : settings.direction; }
+function shuffle(a) { for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} }
+
+function renderSessionCard() {
+  var c = sess.cards[sess.idx]; if (!c) return;
+  var cat = CATEGORIES[c.cat]||{};
+  document.getElementById('sess-bar').style.width = ((sess.idx+1)/sess.cards.length*100)+'%';
+  document.getElementById('sess-count').textContent = (sess.idx+1)+'/'+sess.cards.length;
+  document.getElementById('sess-direction').innerHTML = '<span style="font-size:11px;color:var(--text-muted);background:var(--surface);padding:4px 12px;border-radius:20px;font-weight:500">'+(sess.dir==='pl-nl'?'🇵🇱 → 🇳🇱':'🇳🇱 → 🇵🇱')+'</span>';
+  document.getElementById('sess-retry-banner').style.display = sess.isRetry ? 'block' : 'none';
+  document.getElementById('sess-cat-badge').textContent = (cat.emoji||'')+ ' ' + (cat.label||'');
+  document.getElementById('sess-cat-badge').style.background = (cat.color||'#888') + '22';
+  document.getElementById('sess-cat-badge').style.color = cat.color||'#888';
+  document.getElementById('sess-diff').innerHTML = [1,2,3].map(function(d){return '<div style="width:6px;height:6px;border-radius:3px;background:'+(d<=c.diff?'var(--accent)':'var(--text-dim)')+'"></div>';}).join('');
+  document.getElementById('sess-question').textContent = sess.dir==='pl-nl' ? c.pl : c.nl;
+  document.getElementById('sess-tap-hint').style.display = sess.mode==='flashcard' ? 'block' : 'none';
+  document.getElementById('sess-answer-area').style.display = 'none'; document.getElementById('sess-answer-area').innerHTML = '';
+  document.getElementById('sess-flash-btns').style.display = 'none';
+  document.getElementById('sess-info-area').style.display = 'none'; document.getElementById('sess-info-area').innerHTML = '';
+  document.getElementById('sess-card').className = '';
+  sess.showAnswer = false;
+
+  var ta = document.getElementById('sess-type-area');
+  if (sess.mode === 'type') {
+    ta.style.display = 'block';
+    ta.innerHTML = '<div style="display:flex;gap:8px"><input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+(sess.dir==='pl-nl'?'Typ in het Nederlands...':'Wpisz po polsku...')+'" style="flex:1;padding:14px 18px;border-radius:14px;background:var(--surface);border:2px solid var(--border);color:var(--text);font-size:16px"><button onclick="submitTyped()" style="padding:14px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button></div><button onclick="skipTyped()" style="margin-top:10px;width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px">Weet ik niet — toon antwoord</button>';
+    setTimeout(function(){ var inp = document.getElementById('type-input'); if(inp) { inp.focus(); inp.onkeydown = function(e){ if(e.key==='Enter'&&inp.value.trim()) submitTyped(); }; } }, 100);
+  } else { ta.style.display = 'none'; ta.innerHTML = ''; }
+}
+
+function handleCardTap() { if (sess.mode !== 'flashcard' || sess.showAnswer) return; showAnswer(); }
+
+function showAnswer() {
+  var c = sess.cards[sess.idx], answer = sess.dir === 'pl-nl' ? c.nl : c.pl;
+  sess.showAnswer = true;
+  document.getElementById('sess-tap-hint').style.display = 'none';
+  var aa = document.getElementById('sess-answer-area');
+  aa.style.display = 'block';
+  aa.innerHTML = '<div style="width:40px;height:2px;background:var(--accent);margin:16px auto;border-radius:1px"></div><div style="font-size:26px;font-weight:600;color:var(--accent)">'+answer+'</div>';
+  aa.className = 'anim-slide';
+  showInfoArea(c);
+  document.getElementById('sess-flash-btns').style.display = 'flex';
+}
+
+function showInfoArea(c) {
+  var ia = document.getElementById('sess-info-area'); ia.style.display = 'block'; var html = '';
+  if (settings.showExamples) html += '<div class="example-box"><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>';
+  if (settings.showGrammar && c.gram) html += '<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>';
+  ia.innerHTML = html; ia.className = 'anim-slide';
+}
+
+function submitTyped() {
+  var inp = document.getElementById('type-input'); if (!inp || !inp.value.trim()) return;
+  var c = sess.cards[sess.idx], answer = sess.dir === 'pl-nl' ? c.nl : c.pl;
+  var input = inp.value.trim().toLowerCase(), target = answer.toLowerCase().split('/')[0].trim();
+  var correct = target === input || levenshtein(target, input) <= Math.max(1, Math.floor(target.length * .2));
+  showTypedResult(correct, answer, c);
+}
+function skipTyped() { var c = sess.cards[sess.idx]; showTypedResult(false, sess.dir==='pl-nl'?c.nl:c.pl, c); }
+
+function showTypedResult(correct, answer, c) {
+  document.getElementById('sess-type-area').innerHTML = '<div style="font-size:20px;font-weight:700;color:'+(correct?'var(--green)':'var(--red)')+'">'+(correct?'✓ Goed!':'✗ Niet helemaal')+'</div><div style="font-size:18px;color:var(--accent);margin-top:8px;font-weight:600">'+answer+'</div>';
+  showInfoArea(c);
+  var btn = document.createElement('button'); btn.className = 'big-btn';
+  btn.style.cssText = 'margin-top:16px;justify-content:center;width:100%;background:linear-gradient(135deg,'+(correct?'var(--green),#1D8C55':'var(--accent),#D4543E')+')';
+  btn.innerHTML = '<span style="font-size:16px;font-weight:700">Volgende →</span>';
+  btn.onclick = function(e) { e.stopPropagation(); handleAnswer(correct); };
+  document.getElementById('sess-info-area').appendChild(btn);
+}
+
+function handleAnswer(correct) {
+  var c = sess.cards[sess.idx], ci = cards.findIndex(function(x){return x.id===c.id;});
+  if (ci >= 0) cards[ci] = correct ? SRS.promote(cards[ci], sess.mode) : SRS.demote(cards[ci], sess.mode);
+  if (!sess.isRetry) { sess.totalCount++; if (correct) sess.correctCount++; }
+  if (!correct && !sess.wrong.find(function(w){return w.id===c.id;})) sess.wrong.push(c);
+  if (!sess.isRetry) { stats.totalReviews++; stats.todayReviews++; if(correct) stats.todayCorrect++; stats.todayDate = dateStr(); stats.wordsLearned = cards.filter(function(x){return x.box>=3;}).length; }
+  document.getElementById('sess-card').className = correct ? 'anim-correct' : 'anim-wrong';
+  save('cards', cards); save('stats', stats);
+  setTimeout(function() {
+    if (sess.idx < sess.cards.length - 1) { sess.idx++; sess.dir = getDir(); renderSessionCard(); }
+    else if (sess.wrong.length > 0 && settings.retryWrong && !sess.isRetry) { var retry = sess.wrong.slice(); shuffle(retry); sess.cards = retry; sess.idx = 0; sess.wrong = []; sess.isRetry = true; sess.dir = getDir(); renderSessionCard(); }
+    else { finishSession(); }
+  }, 600);
+}
+
+function finishSession() {
+  checkExpansion();
+  var last = stats.lastSessionDate ? dateStr(stats.lastSessionDate) : null, today = dateStr(), yest = dateStr(Date.now() - 864e5);
+  if (last === today) {} else if (last === yest) stats.streak++; else stats.streak = 1;
+  stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
+  stats.sessionsCompleted++; stats.lastSessionDate = Date.now();
+  save('stats', stats); save('cards', cards); renderResult(); showScreen('result');
+}
+
+function checkExpansion() {
+  var mastered = cards.filter(function(c){return c.box>=3;}).length;
+  if (mastered / cards.length > .4) {
+    var pool = WORD_DB.filter(function(w){return w.pool && !cards.find(function(c){return c.id===w.id;});}).slice(0, 3);
+    if (pool.length) { var nc = pool.map(function(w){return makeCard(w);}); cards = cards.concat(nc); sess.newWords = nc; }
+  }
+}
+
+// ═══════════════════════════════════════
+// RESULT
+// ═══════════════════════════════════════
+function renderResult() {
+  var pct = sess.totalCount ? Math.round(sess.correctCount / sess.totalCount * 100) : 0;
+  document.getElementById('res-emoji').textContent = pct >= 80 ? '🎉' : pct >= 50 ? '💪' : '📚';
+  document.getElementById('res-score-text').textContent = sess.correctCount + ' van ' + sess.totalCount + ' goed';
+  document.getElementById('res-pct').textContent = pct + '%';
+  setTimeout(function(){ document.getElementById('res-ring').setAttribute('stroke-dasharray', (pct/100*377)+' 377'); }, 100);
+  var mastered = cards.filter(function(c){return c.box>=4;}).length;
+  document.getElementById('res-stats').innerHTML = '<div class="stat-box"><div class="val">'+stats.streak+'🔥</div><div class="label">Streak</div></div><div class="stat-box"><div class="val">'+mastered+'</div><div class="label">Geleerd</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div>';
+  var nw = document.getElementById('res-new-words');
+  if (sess.newWords.length) { nw.style.display = 'block'; nw.innerHTML = '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">✨ Nieuwe woorden toegevoegd!</div>' + sess.newWords.map(function(w){return '<div style="font-size:13px;margin-top:4px"><strong>'+w.pl+'</strong> — '+w.nl+'</div>';}).join(''); }
+  else { nw.style.display = 'none'; }
+  var done = stats.todayReviews, goal = settings.dailyGoal, reached = done >= goal;
+  document.getElementById('res-daily').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;color:var(--text-muted)">Doel vandaag</span><span style="font-size:12px;font-weight:700;color:'+(reached?'var(--green)':'var(--accent)')+'">'+done+'/'+goal+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+(reached?'var(--green)':'linear-gradient(90deg,var(--accent),var(--yellow))')+';width:'+Math.min(done/goal*100,100)+'%"></div></div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+(reached ? '🎉 Dagelijks doel gehaald!' : 'Nog '+(goal-done)+' woorden te gaan')+'</div>';
+  var btn = document.getElementById('res-btn');
+  btn.style.background = reached ? 'linear-gradient(135deg,var(--green),#1D8C55)' : 'linear-gradient(135deg,var(--accent),#D4543E)';
+  btn.innerHTML = '<span style="font-size:16px;font-weight:700">'+(reached ? 'Klaar voor vandaag!' : 'Nog een sessie')+'</span>';
+}
+
+// ═══════════════════════════════════════
+// PROGRESS
+// ═══════════════════════════════════════
+function renderProgress() {
+  var m = cards.filter(function(c){return c.box>=4;}).length, l = cards.filter(function(c){return c.box>=1&&c.box<4;}).length, n = cards.filter(function(c){return c.box===0;}).length;
+  var level = m < 10 ? 'Beginner+' : m < 25 ? 'Gevorderd Beginner' : m < 40 ? 'Intermediate' : 'Sterk Intermediate';
+  var html = '<div style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:24px 20px;margin-bottom:20px;border:1px solid var(--border)"><div style="font-size:14px;color:var(--text-muted);margin-bottom:4px">Jouw niveau</div><div style="font-size:28px;font-weight:800;color:var(--accent)">'+level+'</div><div style="font-size:13px;color:var(--text-muted);margin-top:6px">Je kent passief al veel Pools. Deze app helpt je actief vocabulaire op te bouwen.</div></div>';
+  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Woordverdeling</div><div style="display:flex;height:20px;border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="width:'+(m/cards.length*100)+'%;background:var(--green);transition:width .5s"></div><div style="width:'+(l/cards.length*100)+'%;background:var(--yellow);transition:width .5s"></div><div style="width:'+(n/cards.length*100)+'%;background:var(--text-dim);transition:width .5s"></div></div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:28px"><span>🟢 Geleerd: '+m+'</span><span>🟡 Bezig: '+l+'</span><span>⚫ Nieuw: '+n+'</span></div>';
+  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Per categorie</div>';
+  Object.entries(CATEGORIES).forEach(function(e) { var k=e[0], v=e[1], cc=cards.filter(function(c){return c.cat===k;}), cm=cc.filter(function(c){return c.box>=4;}).length; html += '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px">'+v.emoji+' '+v.label+'</span><span style="font-size:12px;color:var(--text-muted)">'+cm+'/'+cc.length+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+v.color+';width:'+(cc.length?cm/cc.length*100:0)+'%"></div></div></div>'; });
+  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px;margin-top:28px">Statistieken</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="stat-box"><div class="val">'+stats.totalReviews+'</div><div class="label">Totaal reviews</div></div><div class="stat-box"><div class="val">'+stats.bestStreak+' 🔥</div><div class="label">Beste streak</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div><div class="stat-box"><div class="val">'+cards.length+'</div><div class="label">Totaal woorden</div></div></div>';
+  document.getElementById('prog-content').innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// WORDS
+// ═══════════════════════════════════════
+var wordsCat = 'all';
+function renderWords() {
+  document.getElementById('words-count').textContent = cards.length + ' woorden';
+  renderCatPills('words-cats', wordsCat, function(c) { wordsCat = c; renderWords(); });
+  var list = document.getElementById('words-list');
+  var filtered = cards.filter(function(c){return wordsCat==='all'||c.cat===wordsCat;}).sort(function(a,b){return a.box-b.box;});
+  list.innerHTML = filtered.map(function(c) {
+    var mis = c.misses||0, barColor = mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--green)', cat=CATEGORIES[c.cat]||{}, needed=SRS.requiredStreak(mis);
+    var bars = [0,1,2,3,4,5,6].map(function(b){return '<div style="width:4px;height:12px;border-radius:2px;background:'+(b<=c.box?barColor:'var(--text-dim)')+'"></div>';}).join('');
+    var badge = mis>0 ? '<span class="badge" style="background:'+(mis>3?'var(--red-soft)':mis>1?'rgba(230,168,23,.13)':'rgba(72,79,88,.2)')+';color:'+(mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--text-muted)')+'">'+mis+'× fout</span>' : '';
+    var fc=(c.modeStats||{}).flashcard||0, tc=(c.modeStats||{}).type||0;
+    var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.13);font-size:11px;color:var(--purple)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--purple)':'rgba(123,97,255,.2)')+'"></div>';}).join('')+'</div></div>' : '';
+    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'</div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px"><div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box"><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════
+function renderSettings() {
+  document.getElementById('set-daily').value = settings.dailyGoal;
+  document.getElementById('set-daily-val').textContent = settings.dailyGoal;
+  document.getElementById('set-session').value = settings.sessionSize;
+  document.getElementById('set-session-val').textContent = settings.sessionSize;
+  document.getElementById('set-direction').value = settings.direction;
+  document.getElementById('set-retry').className = 'toggle' + (settings.retryWrong ? ' on' : '');
+  document.getElementById('set-grammar').className = 'toggle' + (settings.showGrammar ? ' on' : '');
+  document.getElementById('set-examples').className = 'toggle' + (settings.showExamples ? ' on' : '');
+  document.getElementById('set-remind').className = 'toggle' + (settings.reminderEnabled ? ' on' : '');
+  document.getElementById('remind-time-row').style.display = settings.reminderEnabled ? 'flex' : 'none';
+  document.getElementById('set-remind-time').value = settings.reminderTime;
+  updateReminderStatus();
+}
+function toggleSetting(el) { el.classList.toggle('on'); }
+function saveSettings() {
+  settings.dailyGoal = parseInt(document.getElementById('set-daily').value);
+  settings.sessionSize = parseInt(document.getElementById('set-session').value);
+  settings.direction = document.getElementById('set-direction').value;
+  settings.retryWrong = document.getElementById('set-retry').classList.contains('on');
+  settings.showGrammar = document.getElementById('set-grammar').classList.contains('on');
+  settings.showExamples = document.getElementById('set-examples').classList.contains('on');
+  settings.reminderTime = document.getElementById('set-remind-time').value;
+  save('settings', settings);
+}
+function resetAllData() {
+  if (!confirm('Weet je zeker dat je alle voortgang wilt resetten? Dit kan niet ongedaan worden.')) return;
+  cards = WORD_DB.filter(function(w){return !w.pool;}).map(function(w){return makeCard(w);});
+  stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:dateStr()};
+  save('cards', cards); save('stats', stats); showScreen('home');
+}
+
+// ═══════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════
+function exportData() {
+  var data = { version: 2, exportDate: new Date().toISOString(), cards: cards, stats: stats, settings: settings };
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = 'polski-leraar-backup-'+dateStr()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+function importData(event) {
+  var file = event.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.cards || !data.stats) { alert('Ongeldig bestand.'); return; }
+      if (!confirm('Importeer '+data.cards.length+' woorden? Dit vervangt je huidige voortgang.')) return;
+      cards = data.cards; stats = data.stats;
+      if (data.settings) settings = Object.assign({}, settings, data.settings);
+      save('cards', cards); save('stats', stats); save('settings', settings);
+      showScreen('home'); alert('✓ Import gelukt!');
+    } catch(err) { alert('Fout bij importeren: ' + err.message); }
+  };
+  reader.readAsText(file); event.target.value = '';
+}
+
+// ═══════════════════════════════════════
+// REMINDERS
+// ═══════════════════════════════════════
+var reminderTimer = null;
+function toggleReminder(el) {
+  if (!el.classList.contains('on')) {
+    if (!('Notification' in window)) { alert('Je browser ondersteunt geen notificaties.'); return; }
+    Notification.requestPermission().then(function(perm) {
+      if (perm !== 'granted') { alert('Notificaties zijn geblokkeerd. Sta ze toe in je browser-instellingen.'); return; }
+      el.classList.add('on'); settings.reminderEnabled = true;
+      document.getElementById('remind-time-row').style.display = 'flex';
+      scheduleReminder(); save('settings', settings); updateReminderStatus();
+    });
+  } else {
+    el.classList.remove('on'); settings.reminderEnabled = false;
+    document.getElementById('remind-time-row').style.display = 'none';
+    if (reminderTimer) clearTimeout(reminderTimer);
+    save('settings', settings); updateReminderStatus();
+  }
+}
+function scheduleReminder() {
+  if (reminderTimer) clearTimeout(reminderTimer);
+  if (!settings.reminderEnabled) return;
+  var parts = settings.reminderTime.split(':'), h = parseInt(parts[0]), m = parseInt(parts[1]);
+  var now = new Date(), target = new Date(); target.setHours(h, m, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  reminderTimer = setTimeout(function() {
+    var done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
+    if (done < settings.dailyGoal) {
+      new Notification('🇵🇱 Pools oefenen!', { body: 'Je hebt nog '+(settings.dailyGoal - done)+' woorden te gaan vandaag.', tag: 'polski-reminder' });
+    }
+    scheduleReminder();
+  }, target - now);
+}
+function updateReminderStatus() {
+  var el = document.getElementById('remind-status');
+  el.textContent = settings.reminderEnabled ? '⏰ Herinnering om '+settings.reminderTime+' als je je doel nog niet hebt gehaald.' : 'Schakel in om dagelijks herinnerd te worden.';
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function levenshtein(a, b) {
+  var m = a.length, n = b.length, dp = [];
+  for (var i = 0; i <= m; i++) { dp[i] = [i]; for (var j = 1; j <= n; j++) dp[i][j] = 0; }
+  for (var j = 1; j <= n; j++) dp[0][j] = j;
+  for (var i = 1; i <= m; i++) for (var j = 1; j <= n; j++) dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+initData(); renderHome();
+if (settings.reminderEnabled) scheduleReminder();
+document.getElementById('set-remind-time').addEventListener('change', function() {
+  settings.reminderTime = document.getElementById('set-remind-time').value;
+  save('settings', settings); if (settings.reminderEnabled) scheduleReminder(); updateReminderStatus();
+});
+['set-daily','set-session','set-direction'].forEach(function(id) { document.getElementById(id).addEventListener('change', saveSettings); });
+</script>
+</body>
+</html>
