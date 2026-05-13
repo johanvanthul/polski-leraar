@@ -81,6 +81,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div>
       <div style="font-size:13px;color:var(--text-muted);font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Polski Leraar</div>
       <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Cześć, Johan! 🇵🇱</div>
+      <div id="home-level" style="margin-top:6px"></div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
@@ -170,6 +171,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div id="res-pct" style="font-size:32px;font-weight:800"></div></div>
   </div>
   <div id="res-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px"></div>
+  <div id="res-level-up" style="display:none;border-radius:16px;padding:16px 20px;margin-bottom:16px;border:1px solid;text-align:left"></div>
   <div id="res-new-words" style="display:none;background:var(--accent-soft);border-radius:16px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(232,99,74,.2);text-align:left"></div>
   <div id="res-daily" style="background:var(--surface);border-radius:16px;padding:16px 20px;margin-bottom:24px;border:1px solid var(--border);text-align:left"></div>
   <button id="res-btn" class="big-btn" style="justify-content:center;width:100%" onclick="showScreen('home')"></button>
@@ -269,7 +271,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <button onclick="resetAllData()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Reset</button>
     </div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v2.0</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.0</div>
 </div>
 
 <script>
@@ -350,7 +352,124 @@ const WORD_DB = [
   {id:113,pl:"żałować",nl:"spijt hebben",cat:"meningen",ex_pl:"Żałuję, że tego nie zrobiłem",ex_nl:"Ik heb spijt dat ik het niet gedaan heb",diff:3,gram:"'Żałuję, że...' Man: zrobiłem. Vrouw: zrobiłam.",pool:true},
   {id:114,pl:"przyzwyczaić się",nl:"wennen aan",cat:"dagelijks",ex_pl:"Przyzwyczaiłem się do tego",ex_nl:"Ik ben eraan gewend",diff:3,gram:"'-łem' = ik (man). Met 'do' + 2e naamval.",pool:true},
   {id:115,pl:"wygodny",nl:"comfortabel",cat:"dagelijks",ex_pl:"To bardzo wygodne krzesło",ex_nl:"Dat is een comfortabele stoel",diff:1,gram:"'Wygodny' (m), 'wygodna' (v), 'wygodne' (o) — past zich aan.",pool:true},
+  // A1 — actief vocabulaire opbouwen
+  {id:201,pl:"chodzić",nl:"gaan/lopen",cat:"dagelijks",ex_pl:"Chodzę do pracy pieszo",ex_nl:"Ik ga te voet naar mijn werk",diff:1,gram:"'Chodzić' = te voet gaan (gewoontepatroon). 'Iść' = nu gaan. Chodzę, chodzisz, chodzimy.",pool:true,level:'A1'},
+  {id:202,pl:"wiedzieć",nl:"weten",cat:"meningen",ex_pl:"Nie wiem, gdzie to jest",ex_nl:"Ik weet niet waar dat is",diff:1,gram:"Wiem, wiesz, wie, wiemy. 'Nie wiem' = ik weet het niet — één van de nuttigste zinnen!",pool:true,level:'A1'},
+  {id:203,pl:"myśleć",nl:"denken",cat:"meningen",ex_pl:"Co o tym myślisz?",ex_nl:"Wat denk jij daarvan?",diff:1,gram:"Myślę (ik denk), myślisz (jij). Met 'o' + 6e naamval: myślę o tobie (ik denk aan jou).",pool:true,level:'A1'},
+  {id:204,pl:"lubić",nl:"houden van",cat:"meningen",ex_pl:"Lubię spędzać czas z rodziną",ex_nl:"Ik breng graag tijd door met mijn familie",diff:1,gram:"Lubię + heel werkwoord: lubię gotować. Of + 4e naamval: lubię kawę. Lubię, lubisz, lubi, lubimy.",pool:true,level:'A1'},
+  {id:205,pl:"mówić",nl:"zeggen/praten",cat:"dagelijks",ex_pl:"Mówię trochę po polsku",ex_nl:"Ik spreek een beetje Pools",diff:1,gram:"'Po polsku' = in het Pools. Mówię, mówisz, mówi, mówimy. 'Powiedz mi' = zeg me.",pool:true,level:'A1'},
+  {id:206,pl:"słuchać",nl:"luisteren",cat:"dagelijks",ex_pl:"Słucham muzyki podczas gotowania",ex_nl:"Ik luister naar muziek tijdens het koken",diff:1,gram:"'Słuchać' + 2e naamval: słucham muzyki, słucham radia. 'Słuchaj!' = luister! (gebiedende wijs).",pool:true,level:'A1'},
+  {id:207,pl:"pamiętać",nl:"onthouden",cat:"dagelijks",ex_pl:"Pamiętaj, żeby zadzwonić do mamy",ex_nl:"Vergeet niet mama te bellen",diff:1,gram:"'Pamiętaj, żeby...' = vergeet niet te... Pamiętam (ik weet het nog), nie pamiętam (vergeten).",pool:true,level:'A1'},
+  {id:208,pl:"pracować",nl:"werken",cat:"dagelijks",ex_pl:"Pracuję w centrum miasta",ex_nl:"Ik werk in het stadscentrum",diff:1,gram:"Pracuję, pracujesz, pracuje, pracujemy. 'W biurze' = op kantoor, 'w domu' = thuis.",pool:true,level:'A1'},
+  {id:209,pl:"mieszkać",nl:"wonen",cat:"dagelijks",ex_pl:"Mieszkamy razem od pięciu lat",ex_nl:"We wonen al vijf jaar samen",diff:1,gram:"'Od' + tijdsduur in 2e naamval: od pięciu lat (vijf jaar). Mieszkam, mieszkasz, mieszkamy.",pool:true,level:'A1'},
+  {id:210,pl:"czytać",nl:"lezen",cat:"dagelijks",ex_pl:"Czytam polskie książki dla dzieci",ex_nl:"Ik lees Poolse kinderboeken",diff:1,gram:"Czytam, czytasz, czyta. 'Przeczytać' = uitgelezen (voltooid). Probeer Pools te lezen!",pool:true,level:'A1'},
+  {id:211,pl:"pisać",nl:"schrijven",cat:"dagelijks",ex_pl:"Piszę wiadomość po polsku",ex_nl:"Ik schrijf een bericht in het Pools",diff:1,gram:"Piszę, piszesz, pisze. 'Napisać' = geschreven hebben. 'Wiadomość' = bericht.",pool:true,level:'A1'},
+  {id:212,pl:"widzieć",nl:"zien",cat:"dagelijks",ex_pl:"Widzę, że się starasz",ex_nl:"Ik zie dat je je best doet",diff:1,gram:"Widzę, widzisz, widzi. 'Zobaczyć' = iets te zien krijgen (eenmalig). 'Się starasz' = je best doet.",pool:true,level:'A1'},
+  {id:213,pl:"kupować",nl:"kopen",cat:"reizen",ex_pl:"Gdzie można kupić świeży chleb?",ex_nl:"Waar kan ik vers brood kopen?",diff:1,gram:"'Można' + heel werkwoord = men kan. Kupuję, kupujesz. 'Kupić' = gekocht hebben (voltooid).",pool:true,level:'A1'},
+  {id:214,pl:"pytać",nl:"vragen",cat:"dagelijks",ex_pl:"Chcę cię o coś zapytać",ex_nl:"Ik wil je iets vragen",diff:1,gram:"'Zapytać o coś' = naar iets vragen. 'Pytanie' = vraag. 'Mam pytanie' = ik heb een vraag.",pool:true,level:'A1'},
+  {id:215,pl:"odpowiadać",nl:"antwoorden",cat:"dagelijks",ex_pl:"Nie wiem, jak odpowiedzieć",ex_nl:"Ik weet niet hoe ik moet antwoorden",diff:2,gram:"'Odpowiadać na' + 4e naamval: na pytanie (op de vraag). 'Jak' = hoe.",pool:true,level:'A1'},
+  // A2 — jezelf vloeiender uitdrukken
+  {id:216,pl:"rozmawiać",nl:"praten/converseren",cat:"familie",ex_pl:"Lubię rozmawiać z teściową po polsku",ex_nl:"Ik praat graag met mijn schoonmoeder in het Pools",diff:2,gram:"'Teściowa' = schoonmoeder. 'Z' + instrumentalis voor met wie: z teściową, z Anią.",pool:true,level:'A2'},
+  {id:217,pl:"zamawiać",nl:"bestellen",cat:"eten",ex_pl:"Co chcesz zamówić?",ex_nl:"Wat wil je bestellen?",diff:1,gram:"'Zamówić' = besteld hebben. 'Co chcesz zamówić?' — perfecte restaurantzin om van buiten te leren!",pool:true,level:'A2'},
+  {id:218,pl:"planować",nl:"plannen",cat:"reizen",ex_pl:"Planujemy wakacje w Polsce",ex_nl:"We plannen vakantie in Polen",diff:2,gram:"'W Polsce' = in Polen (locatief van Polska). 'Wakacje' = vakantie (altijd meervoud).",pool:true,level:'A2'},
+  {id:219,pl:"zapominać",nl:"vergeten",cat:"dagelijks",ex_pl:"Ciągle zapominam słówek",ex_nl:"Ik vergeet steeds woordjes",diff:2,gram:"'Ciągle' = steeds/aldoor. 'Zapomnieć' = vergeten hebben (eenmalig). 'Słówek' = 2e naamval meervoud.",pool:true,level:'A2'},
+  {id:220,pl:"prosić",nl:"verzoeken",cat:"familie",ex_pl:"Czy mogę prosić o rachunek?",ex_nl:"Mag ik de rekening vragen?",diff:2,gram:"'Mogę prosić o...' — beleefde restaurantzin. 'Rachunek' = rekening.",pool:true,level:'A2'},
+  {id:221,pl:"dziękować",nl:"bedanken",cat:"dagelijks",ex_pl:"Dziękuję ci za pomoc",ex_nl:"Bedankt voor je hulp",diff:1,gram:"'Dziękować za' + 4e naamval: za pomoc, za prezent. 'Ci' = jou (informeel), 'panu/pani' = formeel.",pool:true,level:'A2'},
+  {id:222,pl:"wracać",nl:"terugkeren",cat:"reizen",ex_pl:"O której wracasz do domu?",ex_nl:"Hoe laat kom je thuis?",diff:2,gram:"'O której' = hoe laat. 'Wrócić' = thuisgekomen zijn (eenmalig). 'Do domu' = naar huis.",pool:true,level:'A2'},
+  {id:223,pl:"czuć się",nl:"zich voelen",cat:"dagelijks",ex_pl:"Jak się czujesz?",ex_nl:"Hoe voel je je?",diff:2,gram:"'Jak się czujesz?' Czuję się dobrze (goed), zmęczony (moe), źle (slecht). Altijd zo vragen!",pool:true,level:'A2'},
+  {id:224,pl:"spędzać czas",nl:"tijd doorbrengen",cat:"familie",ex_pl:"Lubimy spędzać czas razem",ex_nl:"We brengen graag tijd samen door",diff:2,gram:"'Spędzić' = doorgebracht hebben (eenmalig). Handig met 'razem' of 'z rodziną'.",pool:true,level:'A2'},
+  {id:225,pl:"interesować się",nl:"geïnteresseerd zijn",cat:"meningen",ex_pl:"Interesuję się historią Polski",ex_nl:"Ik ben geïnteresseerd in de Poolse geschiedenis",diff:2,gram:"'Interesować się' + instrumentalis: historią (van historia), sportem, muzyką.",pool:true,level:'A2'},
+  {id:226,pl:"dowiedzieć się",nl:"te weten komen",cat:"dagelijks",ex_pl:"Skąd się o tym dowiedziałeś?",ex_nl:"Hoe ben je dat te weten gekomen?",diff:3,gram:"'Skąd' = waar vandaan/hoe. '-łeś' = jij (man) verleden. Vrouw: dowiedziałaś się.",pool:true,level:'A2'},
+  {id:227,pl:"przychodzić",nl:"langskomen",cat:"familie",ex_pl:"Czy możesz przyjść do nas w niedzielę?",ex_nl:"Kun je zondag bij ons langskomen?",diff:2,gram:"'Do nas' = bij ons. 'Przyjść' = eenmalig komen. 'Przychodzić' = regelmatig komen.",pool:true,level:'A2'},
+  {id:228,pl:"wyobrażać sobie",nl:"zich voorstellen",cat:"meningen",ex_pl:"Nie mogę sobie wyobrazić życia bez rodziny",ex_nl:"Ik kan me geen leven zonder familie voorstellen",diff:3,gram:"'Sobie' = aan jezelf. 'Bez' + 2e naamval: bez rodziny (zonder familie).",pool:true,level:'A2'},
+  // B1 — conversationeel niveau
+  {id:229,pl:"zastanawiać się",nl:"nadenken over",cat:"meningen",ex_pl:"Zastanawiam się, czy to dobry pomysł",ex_nl:"Ik denk na of dit een goed idee is",diff:3,gram:"'Zastanawiać się nad czymś' = ergens over nadenken. Met 'czy' voor een ja/nee-vraag.",pool:true,level:'B1'},
+  {id:230,pl:"przekonywać",nl:"overtuigen",cat:"meningen",ex_pl:"Trudno mnie przekonać",ex_nl:"Ik ben moeilijk te overtuigen",diff:3,gram:"'Trudno' + heel werkwoord = het is moeilijk om te... 'Mnie' = mij (na het werkwoord).",pool:true,level:'B1'},
+  {id:231,pl:"skomplikowany",nl:"ingewikkeld",cat:"meningen",ex_pl:"Polska gramatyka jest skomplikowana",ex_nl:"De Poolse grammatica is ingewikkeld",diff:2,gram:"Bijvoeglijk naamwoord: skomplikowany (m), skomplikowana (v), skomplikowane (o).",pool:true,level:'B1'},
+  {id:232,pl:"doświadczenie",nl:"ervaring",cat:"dagelijks",ex_pl:"Mam dużo doświadczenia w gotowaniu",ex_nl:"Ik heb veel ervaring met koken",diff:2,gram:"'Mieć doświadczenie w' + locatief: w gotowaniu. 'Dużo' + 2e naamval: dużo doświadczenia.",pool:true,level:'B1'},
+  {id:233,pl:"znajomy",nl:"bekende",cat:"familie",ex_pl:"To mój znajomy z pracy",ex_nl:"Dat is een kennis van mijn werk",diff:2,gram:"'Znajomy' (man), 'znajoma' (vrouw). Verschil: 'przyjaciel' = goede vriend, 'znajomy' = kennis.",pool:true,level:'B1'},
+  {id:234,pl:"polegać na",nl:"vertrouwen op",cat:"familie",ex_pl:"Mogę na tobie polegać",ex_nl:"Ik kan op jou rekenen",diff:3,gram:"'Polegać na' + locatief: na tobie (op jou), na rodzinie (op familie).",pool:true,level:'B1'},
+  {id:235,pl:"mimo że",nl:"hoewel",cat:"meningen",ex_pl:"Mimo że jestem zmęczony, chcę ćwiczyć",ex_nl:"Hoewel ik moe ben, wil ik oefenen",diff:3,gram:"Verbindingswoord voor tegenstelling. 'Mimo że' + bijzin, dan hoofdzin. 'Ćwiczyć' = oefenen.",pool:true,level:'B1'},
+  {id:236,pl:"przyznać się",nl:"toegeven",cat:"meningen",ex_pl:"Muszę się przyznać — nie rozumiem",ex_nl:"Ik moet toegeven — ik begrijp het niet",diff:3,gram:"'Się' maakt het wederkerend. 'Przyznać się do czegoś' = iets erkennen/bekennen.",pool:true,level:'B1'},
+  {id:237,pl:"wymagać",nl:"vereisen",cat:"dagelijks",ex_pl:"Nauka języka wymaga cierpliwości",ex_nl:"Taalleren vereist geduld",diff:3,gram:"'Wymagać' + 2e naamval: wymaga cierpliwości (geduld), czasu (tijd), wysiłku (inspanning).",pool:true,level:'B1'},
+  {id:238,pl:"nawiązywać kontakt",nl:"contact leggen",cat:"familie",ex_pl:"Chcę nawiązać kontakt z polską rodziną",ex_nl:"Ik wil contact leggen met de Poolse familie",diff:3,gram:"'Z' + instrumentalis: z rodziną. 'Nawiązać' = eenmalig contact leggen.",pool:true,level:'B1'},
 ];
+
+// ═══════════════════════════════════════
+// LEVEL ENGINE
+// ═══════════════════════════════════════
+const LEVEL = {
+  DEFS: [
+    {code:'A0', label:'Absolute Beginner', desc:'Je bouwt je eerste actieve woordenschat op.', color:'var(--text-muted)'},
+    {code:'A1', label:'Beginner',           desc:'Je kent de basiswoorden en kunt eenvoudige dingen zeggen.', color:'var(--blue)'},
+    {code:'A2', label:'Elementair',         desc:'Je kunt je uitdrukken over vertrouwde onderwerpen.', color:'var(--green)'},
+    {code:'B1', label:'Drempelwaarde',      desc:'Je kunt eenvoudige gesprekken voeren en begrijpen.', color:'var(--accent)'},
+  ],
+  // wat je nodig hebt OM dit niveau te bereiken
+  thresholds: {
+    A1: {mastered:10, avgBox:1.2, errorRate:0.55},
+    A2: {mastered:25, avgBox:2.0, errorRate:0.40},
+    B1: {mastered:40, avgBox:3.0, errorRate:0.25},
+  },
+
+  compute() {
+    var reviewed = cards.filter(function(c){return c.reviews>0;});
+    var mastered  = cards.filter(function(c){return c.box>=3;}).length;
+    if (!reviewed.length) return Object.assign({}, this.DEFS[0], {progress:0, progressLabel:'10 woorden nodig voor A1', mastered:mastered, nextMastered:10});
+
+    var avgBox     = reviewed.reduce(function(s,c){return s+c.box;},0) / reviewed.length;
+    var totalRev   = reviewed.reduce(function(s,c){return s+c.reviews;},0);
+    var totalMiss  = reviewed.reduce(function(s,c){return s+(c.misses||0);},0);
+    var errorRate  = totalRev ? totalMiss/totalRev : 1;
+
+    var def = this.DEFS[0];
+    var order = ['A1','A2','B1'];
+    var self = this;
+    order.forEach(function(code){
+      var t = self.thresholds[code];
+      if (mastered >= t.mastered && avgBox >= t.avgBox && errorRate <= t.errorRate) {
+        def = self.DEFS.find(function(d){return d.code===code;});
+      }
+    });
+
+    var idx  = this.DEFS.indexOf(def);
+    var next = this.DEFS[idx+1];
+    var nextT = next ? this.thresholds[next.code] : null;
+    var progress = nextT ? Math.min(100, Math.round(mastered/nextT.mastered*100)) : 100;
+    var progressLabel = next
+      ? mastered+'/'+nextT.mastered+' woorden geleerd voor '+next.code
+      : '🏆 Hoogste niveau bereikt!';
+
+    return Object.assign({}, def, {
+      progress: progress, progressLabel: progressLabel,
+      mastered: mastered, nextMastered: nextT ? nextT.mastered : mastered,
+      avgBox: Math.round(avgBox*10)/10,
+      errorPct: Math.round(errorRate*100),
+    });
+  },
+
+  getNextWords(count) {
+    var lvl = this.compute();
+    var activeIds = new Set(cards.map(function(c){return c.id;}));
+    var order = ['A0','A1','A2','B1'];
+    var idx = order.indexOf(lvl.code);
+    var targets = new Set(order.slice(Math.max(0,idx-1), idx+2));
+
+    var candidates = WORD_DB.filter(function(w){
+      return w.pool && !activeIds.has(w.id) && targets.has(w.level||'A0');
+    });
+
+    // spreid over categorieën: minst bezette categorie eerst
+    var catCount = {};
+    cards.forEach(function(c){ catCount[c.cat]=(catCount[c.cat]||0)+1; });
+    candidates.sort(function(a,b){
+      var cd = (catCount[a.cat]||0)-(catCount[b.cat]||0);
+      return cd!==0 ? cd : (a.diff||1)-(b.diff||1);
+    });
+
+    return candidates.slice(0, count);
+  },
+};
 
 // ═══════════════════════════════════════
 // SRS ENGINE + STATE + STORAGE
@@ -381,7 +500,7 @@ let cards = [];
 let stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:null};
 let settings = {dailyGoal:20, sessionSize:10, direction:'mix', retryWrong:true, showGrammar:true, showExamples:true, reminderEnabled:false, reminderTime:'20:00'};
 let selectedCat = 'all';
-let sess = {cards:[], idx:0, mode:'flashcard', dir:'pl-nl', showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[]};
+let sess = {cards:[], idx:0, mode:'flashcard', dir:'pl-nl', showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
 
 function save(k, v) { try { localStorage.setItem('polski_'+k, JSON.stringify(v)); } catch(e){} }
 function load(k) { try { const d = localStorage.getItem('polski_'+k); return d ? JSON.parse(d) : null; } catch(e) { return null; } }
@@ -427,6 +546,8 @@ function endSession() { showScreen('home'); }
 // HOME
 // ═══════════════════════════════════════
 function renderHome() {
+  var lvl = LEVEL.compute();
+  document.getElementById('home-level').innerHTML = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:'+lvl.color+'22;color:'+lvl.color+'">'+lvl.code+' · '+lvl.label+'</span>';
   const mastered = cards.filter(c => c.box >= 4).length;
   const due = getDueCards().length;
   const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
@@ -581,19 +702,25 @@ function handleAnswer(correct) {
 }
 
 function finishSession() {
+  var levelBefore = LEVEL.compute().code;
   checkExpansion();
   var last = stats.lastSessionDate ? dateStr(stats.lastSessionDate) : null, today = dateStr(), yest = dateStr(Date.now() - 864e5);
   if (last === today) {} else if (last === yest) stats.streak++; else stats.streak = 1;
   stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
   stats.sessionsCompleted++; stats.lastSessionDate = Date.now();
+  var levelAfter = LEVEL.compute().code;
+  sess.levelUp = levelBefore !== levelAfter ? levelAfter : null;
   save('stats', stats); save('cards', cards); renderResult(); showScreen('result');
 }
 
 function checkExpansion() {
+  if (!cards.length) return;
   var mastered = cards.filter(function(c){return c.box>=3;}).length;
-  if (mastered / cards.length > .4) {
-    var pool = WORD_DB.filter(function(w){return w.pool && !cards.find(function(c){return c.id===w.id;});}).slice(0, 3);
-    if (pool.length) { var nc = pool.map(function(w){return makeCard(w);}); cards = cards.concat(nc); sess.newWords = nc; }
+  if (mastered / cards.length < 0.35) return;
+  var newWords = LEVEL.getNextWords(3);
+  if (newWords.length) {
+    cards = cards.concat(newWords.map(function(w){return makeCard(w);}));
+    sess.newWords = newWords;
   }
 }
 
@@ -608,6 +735,13 @@ function renderResult() {
   setTimeout(function(){ document.getElementById('res-ring').setAttribute('stroke-dasharray', (pct/100*377)+' 377'); }, 100);
   var mastered = cards.filter(function(c){return c.box>=4;}).length;
   document.getElementById('res-stats').innerHTML = '<div class="stat-box"><div class="val">'+stats.streak+'🔥</div><div class="label">Streak</div></div><div class="stat-box"><div class="val">'+mastered+'</div><div class="label">Geleerd</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div>';
+  var lu = document.getElementById('res-level-up');
+  if (sess.levelUp) {
+    var luDef = LEVEL.DEFS.find(function(d){return d.code===sess.levelUp;})||{label:sess.levelUp,color:'var(--accent)',desc:''};
+    var luMsg = {A1:'Je kent de basiswoorden!',A2:'Je kunt je uitdrukken!',B1:'Je kunt converseren!'}[sess.levelUp]||'';
+    lu.style.display='block'; lu.style.borderColor=luDef.color+'55'; lu.style.background=luDef.color+'18';
+    lu.innerHTML='<div style="font-size:15px;font-weight:800;color:'+luDef.color+';margin-bottom:4px">🎯 Niveau omhoog! Je bent nu '+sess.levelUp+'</div><div style="font-size:13px;color:var(--text-muted)">'+luDef.label+' — '+luMsg+'</div>';
+  } else { lu.style.display='none'; }
   var nw = document.getElementById('res-new-words');
   if (sess.newWords.length) { nw.style.display = 'block'; nw.innerHTML = '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">✨ Nieuwe woorden toegevoegd!</div>' + sess.newWords.map(function(w){return '<div style="font-size:13px;margin-top:4px"><strong>'+w.pl+'</strong> — '+w.nl+'</div>';}).join(''); }
   else { nw.style.display = 'none'; }
@@ -623,8 +757,25 @@ function renderResult() {
 // ═══════════════════════════════════════
 function renderProgress() {
   var m = cards.filter(function(c){return c.box>=4;}).length, l = cards.filter(function(c){return c.box>=1&&c.box<4;}).length, n = cards.filter(function(c){return c.box===0;}).length;
-  var level = m < 10 ? 'Beginner+' : m < 25 ? 'Gevorderd Beginner' : m < 40 ? 'Intermediate' : 'Sterk Intermediate';
-  var html = '<div style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:24px 20px;margin-bottom:20px;border:1px solid var(--border)"><div style="font-size:14px;color:var(--text-muted);margin-bottom:4px">Jouw niveau</div><div style="font-size:28px;font-weight:800;color:var(--accent)">'+level+'</div><div style="font-size:13px;color:var(--text-muted);margin-top:6px">Je kent passief al veel Pools. Deze app helpt je actief vocabulaire op te bouwen.</div></div>';
+  var lvl = LEVEL.compute();
+  var html = '<div style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:24px 20px;margin-bottom:20px;border:1px solid var(--border)">'
+    +'<div style="font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Jouw niveau</div>'
+    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">'
+    +'<div style="font-size:36px;font-weight:900;color:'+lvl.color+';line-height:1">'+lvl.code+'</div>'
+    +'<div><div style="font-size:18px;font-weight:700">'+lvl.label+'</div>'
+    +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+lvl.desc+'</div></div>'
+    +'</div>'
+    +(lvl.progress < 100
+      ? '<div class="progress-bar" style="height:6px;margin-bottom:6px"><div class="progress-bar-fill" style="background:'+lvl.color+';width:'+lvl.progress+'%"></div></div>'
+        +'<div style="font-size:11px;color:var(--text-muted)">'+lvl.progressLabel+'</div>'
+      : '<div style="font-size:12px;color:var(--accent);font-weight:600">🏆 Hoogste niveau bereikt!</div>'
+    )
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">'
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+lvl.mastered+'</div><div style="font-size:10px;color:var(--text-muted)">geleerd</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+lvl.avgBox+'</div><div style="font-size:10px;color:var(--text-muted)">gem. box</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+(lvl.errorPct!==undefined?lvl.errorPct:'—')+'%</div><div style="font-size:10px;color:var(--text-muted)">foutrate</div></div>'
+    +'</div>'
+    +'</div>';
   html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Woordverdeling</div><div style="display:flex;height:20px;border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="width:'+(m/cards.length*100)+'%;background:var(--green);transition:width .5s"></div><div style="width:'+(l/cards.length*100)+'%;background:var(--yellow);transition:width .5s"></div><div style="width:'+(n/cards.length*100)+'%;background:var(--text-dim);transition:width .5s"></div></div>';
   html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:28px"><span>🟢 Geleerd: '+m+'</span><span>🟡 Bezig: '+l+'</span><span>⚫ Nieuw: '+n+'</span></div>';
   html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Per categorie</div>';
