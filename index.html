@@ -157,9 +157,13 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <span style="font-size:20px">⌨️</span>
       <div><div style="font-size:16px;font-weight:700">Typ het antwoord</div><div style="font-size:12px;opacity:.8">~10 woorden · actiever leren</div></div>
     </button>
+    <button id="btn-listen" class="big-btn" onclick="startSession('listen')" style="background:linear-gradient(135deg,var(--blue),#3A7BC8)">
+      <span style="font-size:20px">🎧</span>
+      <div><div style="font-size:16px;font-weight:700">Luisteren</div><div style="font-size:12px;opacity:.8">~10 woorden · hoor & vertaal</div></div>
+    </button>
   </div>
   <div style="margin-top:24px;padding:16px 18px;background:var(--surface);border-radius:14px;border:1px solid var(--border);font-size:13px;color:var(--text-muted);line-height:1.6">
-    💡 <strong style="color:var(--text)">Tip:</strong> Mix flashcards en typen. Herkennen bouwt begrip, typen bouwt actieve kennis.
+    💡 <strong style="color:var(--text)">Tip:</strong> Mix de modi. Flashcards voor herkenning, typen voor actief gebruik, luisteren voor uitspraak en begrip.
   </div>
 </div>
 
@@ -178,6 +182,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <div id="sess-diff" style="position:absolute;top:16px;right:18px;display:flex;gap:3px"></div>
       <div id="sess-question" style="font-size:32px;font-weight:800;letter-spacing:-.5px"></div>
       <div id="sess-tap-hint" style="font-size:14px;color:var(--text-muted);margin-top:12px">tap om te zien</div>
+      <div id="sess-speak-btn" style="display:none;margin-top:14px"><button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:14px;padding:10px 22px;font-size:20px;cursor:pointer">🔊</button></div>
       <div id="sess-answer-area" style="display:none"></div>
       <div id="sess-type-area" style="display:none;margin-top:20px"></div>
       <div id="sess-info-area" style="display:none"></div>
@@ -277,6 +282,10 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <div><div class="label">Voorbeeldzinnen</div><div class="sublabel">Context na elk antwoord</div></div>
       <div id="set-examples" class="toggle on" onclick="toggleSetting(this)"></div>
     </div>
+    <div class="setting-row">
+      <div><div class="label">Automatische uitspraak</div><div class="sublabel">Speelt Pools af bij elke kaart</div></div>
+      <div id="set-speak" class="toggle on" onclick="toggleSetting(this)"></div>
+    </div>
   </div>
   <div class="settings-section">
     <div class="settings-section-title">🔔 Herinneringen</div>
@@ -310,7 +319,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.2</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.3</div>
 </div>
 
 <script>
@@ -537,7 +546,7 @@ const SRS = {
 
 let cards = [];
 let stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:null};
-let settings = {dailyGoal:20, sessionSize:10, direction:'mix', retryWrong:true, showGrammar:true, showExamples:true, reminderEnabled:false, reminderTime:'20:00'};
+let settings = {dailyGoal:20, sessionSize:10, direction:'mix', retryWrong:true, showGrammar:true, showExamples:true, autoSpeak:true, reminderEnabled:false, reminderTime:'20:00'};
 let selectedCat = 'all';
 let sess = {cards:[], idx:0, mode:'flashcard', dir:'pl-nl', showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
 
@@ -617,16 +626,19 @@ function renderHome() {
   if (due > 0) { dueEl.style.display = 'flex'; document.getElementById('due-count').textContent = due; }
   else { dueEl.style.display = 'none'; }
 
-  const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type');
+  const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type'), bl = document.getElementById('btn-listen');
   if (reached) {
-    bf.style.background = bt.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
+    bf.style.background = bt.style.background = bl.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
     bf.querySelector('div div:first-child').textContent = 'Bonus Flashcards';
     bt.querySelector('div div:first-child').textContent = 'Bonus Typen';
+    bl.querySelector('div div:first-child').textContent = 'Bonus Luisteren';
   } else {
     bf.style.background = 'linear-gradient(135deg,var(--accent),#D4543E)';
     bt.style.background = 'linear-gradient(135deg,var(--purple),#6247E5)';
+    bl.style.background = 'linear-gradient(135deg,var(--blue),#3A7BC8)';
     bf.querySelector('div div:first-child').textContent = 'Flashcards';
     bt.querySelector('div div:first-child').textContent = 'Typ het antwoord';
+    bl.querySelector('div div:first-child').textContent = 'Luisteren';
   }
   renderCatPills('home-cats', selectedCat, function(c) { selectedCat = c; renderHome(); });
 }
@@ -647,18 +659,36 @@ function getDueCards() {
 // SESSION
 // ═══════════════════════════════════════
 function startSession(mode) {
-  var due = getDueCards(), sz = settings.sessionSize, sel = due.slice(0, sz);
+  // Type-modus: alleen woorden die al minstens 1 keer als flashcard geoefend zijn
+  var pool = cards.filter(function(c){
+    return (selectedCat==='all'||c.cat===selectedCat) &&
+           (mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1);
+  });
+  if (mode === 'type' && pool.length === 0) {
+    alert('Oefen eerst flashcards — type-modus werkt alleen met woorden die je al herkend hebt.');
+    return;
+  }
+  var duePool = getDueCards().filter(function(c){
+    return mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1;
+  });
+  var sz = settings.sessionSize, sel = duePool.slice(0, sz);
   if (sel.length < sz) {
     var ids = new Set(sel.map(function(c){return c.id;}));
-    var rest = cards.filter(function(c){return !ids.has(c.id) && (selectedCat==='all'||c.cat===selectedCat);})
-      .sort(function(a,b){ var am=(a.modeStats||{})[mode]||0, bm=(b.modeStats||{})[mode]||0; return am!==bm?am-bm:a.box-b.box; }).slice(0, sz - sel.length);
+    var sortKey = mode === 'listen' ? 'type' : mode;
+    var rest = pool.filter(function(c){return !ids.has(c.id);})
+      .sort(function(a,b){ var am=(a.modeStats||{})[sortKey]||0, bm=(b.modeStats||{})[sortKey]||0; return am!==bm?am-bm:a.box-b.box; }).slice(0, sz - sel.length);
     sel = sel.concat(rest);
   }
   shuffle(sel);
-  sess = {cards:sel, idx:0, mode:mode, dir:getDir(), showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[]};
+  var dir = mode === 'listen' ? 'pl-nl' : mode === 'type' ? 'nl-pl' : getDir();
+  sess = {cards:sel, idx:0, mode:mode, dir:dir, showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
   showScreen('session'); renderSessionCard();
 }
-function getDir() { return settings.direction === 'mix' ? (Math.random() > .5 ? 'pl-nl' : 'nl-pl') : settings.direction; }
+function getDir() {
+  if (sess.mode === 'listen') return 'pl-nl';
+  if (sess.mode === 'type')   return 'nl-pl';
+  return settings.direction === 'mix' ? (Math.random() > .5 ? 'pl-nl' : 'nl-pl') : settings.direction;
+}
 function shuffle(a) { for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} }
 
 function renderSessionCard() {
@@ -672,8 +702,20 @@ function renderSessionCard() {
   document.getElementById('sess-cat-badge').style.background = (cat.color||'#888') + '22';
   document.getElementById('sess-cat-badge').style.color = cat.color||'#888';
   document.getElementById('sess-diff').innerHTML = [1,2,3].map(function(d){return '<div style="width:6px;height:6px;border-radius:3px;background:'+(d<=c.diff?'var(--accent)':'var(--text-dim)')+'"></div>';}).join('');
-  document.getElementById('sess-question').textContent = sess.dir==='pl-nl' ? c.pl : c.nl;
+  // Luister-modus: verberg tekst, toon grote audioknop
+  var isListen = sess.mode === 'listen';
+  if (isListen) {
+    document.getElementById('sess-direction').innerHTML = '<span style="font-size:11px;color:var(--text-muted);background:var(--surface);padding:4px 12px;border-radius:20px;font-weight:500">🎧 Hoor & vertaal</span>';
+    document.getElementById('sess-question').innerHTML = '<button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.12);border:2px solid rgba(74,144,217,.25);color:var(--blue);border-radius:20px;padding:20px 36px;font-size:52px;cursor:pointer">🔊</button>';
+  } else {
+    document.getElementById('sess-question').textContent = sess.dir==='pl-nl' ? c.pl : c.nl;
+  }
   document.getElementById('sess-tap-hint').style.display = sess.mode==='flashcard' ? 'block' : 'none';
+
+  // 🔊 replay-knop: toon bij flashcard en listen (niet bij type — input heeft focus)
+  var spkBtn = document.getElementById('sess-speak-btn');
+  spkBtn.style.display = (sess.mode === 'flashcard') ? 'block' : 'none';
+
   document.getElementById('sess-answer-area').style.display = 'none'; document.getElementById('sess-answer-area').innerHTML = '';
   document.getElementById('sess-flash-btns').style.display = 'none';
   document.getElementById('sess-info-area').style.display = 'none'; document.getElementById('sess-info-area').innerHTML = '';
@@ -681,11 +723,18 @@ function renderSessionCard() {
   sess.showAnswer = false;
 
   var ta = document.getElementById('sess-type-area');
-  if (sess.mode === 'type') {
+  if (sess.mode === 'type' || isListen) {
     ta.style.display = 'block';
-    ta.innerHTML = '<div style="display:flex;gap:8px"><input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+(sess.dir==='pl-nl'?'Typ in het Nederlands...':'Wpisz po polsku...')+'" style="flex:1;padding:14px 18px;border-radius:14px;background:var(--surface);border:2px solid var(--border);color:var(--text);font-size:16px"><button onclick="submitTyped()" style="padding:14px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button></div><button onclick="skipTyped()" style="margin-top:10px;width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px">Weet ik niet — toon antwoord</button>';
+    ta.innerHTML = '<div style="display:flex;gap:8px"><input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+(isListen?'Typ in het Nederlands...':'Wpisz po polsku...')+'" style="flex:1;padding:14px 18px;border-radius:14px;background:var(--surface);border:2px solid var(--border);color:var(--text);font-size:16px"><button onclick="submitTyped()" style="padding:14px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button></div><button onclick="skipTyped()" style="margin-top:10px;width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px">Weet ik niet — toon antwoord</button>';
     setTimeout(function(){ var inp = document.getElementById('type-input'); if(inp) { inp.focus(); inp.onkeydown = function(e){ if(e.key==='Enter'&&inp.value.trim()) submitTyped(); }; } }, 100);
   } else { ta.style.display = 'none'; ta.innerHTML = ''; }
+
+  // Auto-uitspraak
+  if (settings.autoSpeak || isListen) {
+    var plText = sess.dir === 'pl-nl' ? c.pl : null;
+    if (isListen) plText = c.pl;
+    if (plText) speak(plText);
+  }
 }
 
 function handleCardTap() { if (sess.mode !== 'flashcard' || sess.showAnswer) return; showAnswer(); }
@@ -704,7 +753,7 @@ function showAnswer() {
 
 function showInfoArea(c) {
   var ia = document.getElementById('sess-info-area'); ia.style.display = 'block'; var html = '';
-  if (settings.showExamples) html += '<div class="example-box"><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>';
+  if (settings.showExamples) html += '<div class="example-box" style="position:relative"><button onclick="speak(\''+c.ex_pl.replace(/'/g,"\\'")+'\')" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:16px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>';
   if (settings.showGrammar && c.gram) html += '<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>';
   ia.innerHTML = html; ia.className = 'anim-slide';
 }
@@ -712,14 +761,31 @@ function showInfoArea(c) {
 function submitTyped() {
   var inp = document.getElementById('type-input'); if (!inp || !inp.value.trim()) return;
   var c = sess.cards[sess.idx], answer = sess.dir === 'pl-nl' ? c.nl : c.pl;
-  var input = inp.value.trim().toLowerCase(), target = answer.toLowerCase().split('/')[0].trim();
-  var correct = target === input || levenshtein(target, input) <= Math.max(1, Math.floor(target.length * .2));
-  showTypedResult(correct, answer, c);
+  var typed = inp.value.trim();
+  var input = typed.toLowerCase(), target = answer.toLowerCase().split('/')[0].trim();
+  var exact = target === input;
+  var fuzzy = !exact && levenshtein(target, input) <= Math.max(1, Math.floor(target.length * .2));
+  var correct = exact || fuzzy;
+  showTypedResult(correct, answer, c, exact ? null : typed);
 }
-function skipTyped() { var c = sess.cards[sess.idx]; showTypedResult(false, sess.dir==='pl-nl'?c.nl:c.pl, c); }
+function skipTyped() { var c = sess.cards[sess.idx]; showTypedResult(false, sess.dir==='pl-nl'?c.nl:c.pl, c, null); }
 
-function showTypedResult(correct, answer, c) {
-  document.getElementById('sess-type-area').innerHTML = '<div style="font-size:20px;font-weight:700;color:'+(correct?'var(--green)':'var(--red)')+'">'+(correct?'✓ Goed!':'✗ Niet helemaal')+'</div><div style="font-size:18px;color:var(--accent);margin-top:8px;font-weight:600">'+answer+'</div>';
+function showTypedResult(correct, answer, c, typedInput) {
+  var isFuzzy = correct && typedInput;
+  var label = isFuzzy ? '≈ Bijna!' : correct ? '✓ Goed!' : '✗ Niet goed';
+  var color = isFuzzy ? 'var(--yellow)' : correct ? 'var(--green)' : 'var(--red)';
+  var html = '<div style="font-size:20px;font-weight:700;color:'+color+'">'+label+'</div>';
+  if (typedInput) {
+    // Toon verschil: wat getypt vs wat goed is
+    html += '<div style="margin-top:12px;background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left">';
+    html += '<div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Vergelijk</div>';
+    html += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:10px;color:var(--red);font-weight:700;min-width:36px;text-transform:uppercase">Jij</span><span style="font-size:15px;font-family:var(--mono);color:var(--red)">'+typedInput+'</span></div>';
+    html += '<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:10px;color:var(--green);font-weight:700;min-width:36px;text-transform:uppercase">Goed</span><span style="font-size:15px;font-family:var(--mono);color:var(--green)">'+answer+'</span></div>';
+    html += '</div>';
+  } else {
+    html += '<div style="font-size:18px;color:var(--accent);margin-top:8px;font-weight:600">'+answer+'</div>';
+  }
+  document.getElementById('sess-type-area').innerHTML = html;
   showInfoArea(c);
   var btn = document.createElement('button'); btn.className = 'big-btn';
   btn.style.cssText = 'margin-top:16px;justify-content:center;width:100%;background:linear-gradient(135deg,'+(correct?'var(--green),#1D8C55':'var(--accent),#D4543E')+')';
@@ -843,7 +909,8 @@ function renderWords() {
     var badge = mis>0 ? '<span class="badge" style="background:'+(mis>3?'var(--red-soft)':mis>1?'rgba(230,168,23,.13)':'rgba(72,79,88,.2)')+';color:'+(mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--text-muted)')+'">'+mis+'× fout</span>' : '';
     var fc=(c.modeStats||{}).flashcard||0, tc=(c.modeStats||{}).type||0;
     var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.13);font-size:11px;color:var(--purple)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--purple)':'rgba(123,97,255,.2)')+'"></div>';}).join('')+'</div></div>' : '';
-    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'</div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px"><div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box"><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
+    var safePl = c.pl.replace(/'/g,"\\'");
+    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px"><div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
   }).join('');
 }
 
@@ -868,6 +935,7 @@ function renderSettings() {
   document.getElementById('set-retry').className = 'toggle' + (settings.retryWrong ? ' on' : '');
   document.getElementById('set-grammar').className = 'toggle' + (settings.showGrammar ? ' on' : '');
   document.getElementById('set-examples').className = 'toggle' + (settings.showExamples ? ' on' : '');
+  document.getElementById('set-speak').className = 'toggle' + (settings.autoSpeak ? ' on' : '');
   document.getElementById('set-remind').className = 'toggle' + (settings.reminderEnabled ? ' on' : '');
   document.getElementById('remind-time-row').style.display = settings.reminderEnabled ? 'flex' : 'none';
   document.getElementById('set-remind-time').value = settings.reminderTime;
@@ -881,6 +949,7 @@ function saveSettings() {
   settings.retryWrong = document.getElementById('set-retry').classList.contains('on');
   settings.showGrammar = document.getElementById('set-grammar').classList.contains('on');
   settings.showExamples = document.getElementById('set-examples').classList.contains('on');
+  settings.autoSpeak = document.getElementById('set-speak').classList.contains('on');
   settings.reminderTime = document.getElementById('set-remind-time').value;
   save('settings', settings);
   sbSyncUp();
@@ -967,6 +1036,20 @@ function updateReminderStatus() {
 // ═══════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════
+function speak(text, lang) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = lang || 'pl-PL';
+  u.rate = 0.82;
+  window.speechSynthesis.speak(u);
+}
+function speakCurrentCard() {
+  var c = sess.cards[sess.idx]; if (!c) return;
+  var isPolish = sess.dir === 'pl-nl' || sess.mode === 'listen';
+  speak(isPolish ? c.pl : c.nl, isPolish ? 'pl-PL' : 'nl-NL');
+}
+
 function levenshtein(a, b) {
   var m = a.length, n = b.length, dp = [];
   for (var i = 0; i <= m; i++) { dp[i] = [i]; for (var j = 1; j <= n; j++) dp[i][j] = 0; }
