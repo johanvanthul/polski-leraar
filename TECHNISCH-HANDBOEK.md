@@ -260,3 +260,4 @@ Er is een bug: [beschrijf wat er gebeurt]. Fix het.
 | 13 mei 2026 | v3.0 | Intelligent niveau-systeem A0→B1; 38 nieuwe woorden (A1/A2/B1); LEVEL engine; niveau-badge op home en voortgang-scherm; level-up banner |
 | 13 mei 2026 | v3.1 | Supabase backend: auth-scherm, automatische sync, offline fallback, migratie van localStorage |
 | 13 mei 2026 | v3.2 | Auth-scherm overgeslagen bij laden (altijd direct naar home); auth-scherm overflow:hidden gefixed; Pools vlaggetje hersteld |
+| 13 mei 2026 | v3.3 | Luistermodus (🎧): hoor Pools, typ Nederlands; 🔊 uitspraakknop op kaarten, woordenlijst en voorbeeldzinnen; auto-uitspraak instelbaar; type-modus altijd NL→PL, alleen woorden met ≥1 flashcard-review, toont verschil bij fout antwoord |

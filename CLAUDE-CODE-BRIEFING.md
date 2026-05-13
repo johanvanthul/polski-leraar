@@ -11,7 +11,7 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 `https://johanvanthul.github.io/polski-leraar/`
 
 ### Huidige tech stack
-- **Eén HTML-bestand** (`index.html`, ~1130 regels, ~89KB) — alle CSS, JS en data inline
+- **Eén HTML-bestand** (`index.html`, ~1220 regels, ~94KB) — alle CSS, JS en data inline
 - **Geen framework** — vanilla JavaScript
 - **Opslag**: Supabase (primair) + `localStorage` (offline fallback)
 - **Auth**: Supabase Auth (email/wachtwoord)
@@ -22,7 +22,7 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 
 ---
 
-## Huidige features (v3.2)
+## Huidige features (v3.3)
 
 ### Leer-engine (Spaced Repetition)
 - **Leitner-systeem** met 7 boxen, intervallen: [0, 1, 3, 7, 14, 30, 60] dagen
@@ -30,9 +30,10 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 - **Promotie-gating**: woorden met fouten moeten meerdere keer achter elkaar goed beantwoord worden voordat ze omhoog gaan (1 miss → 2× goed nodig, 3 → 3×, 5+ → 4×)
 - **Succesvolle promotie** vermindert de miss-teller met 1
 
-### Twee oefenmodi
-1. **Flashcards**: tap om antwoord te zien, zelf beoordelen (Wist ik / Wist ik niet)
-2. **Type**: antwoord intypen met fuzzy matching (Levenshtein-afstand, 20% tolerantie). "Weet ik niet" knop om antwoord te tonen.
+### Drie oefenmodi
+1. **Flashcards**: tap om antwoord te zien, zelf beoordelen (Wist ik / Wist ik niet). Richting instelbaar (mix/PL→NL/NL→PL). 🔊 replay-knop aanwezig.
+2. **Type**: altijd NL→PL. Alleen woorden met ≥1 flashcard-review. Fuzzy matching (Levenshtein, 20% tolerantie). Bij fout/bijna-goed: vergelijk-blok "Jij: X / Goed: Y". Bijna-goed toont ≈ Bijna! in geel.
+3. **Luisteren**: altijd PL→NL. Kaart toont grote 🔊-knop i.p.v. tekst, Pools woord speelt automatisch. Antwoord typen in het Nederlands.
 
 ### Sessie-logica
 - Configureerbare sessiegrootte (5-20 woorden, default 10)
@@ -90,9 +91,16 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 - **Auth-scherm**: toegankelijk via Instellingen → Account & Sync; overgeslagen bij app-start
 - **Instellingen**: auth-sectie (inloggen/uitloggen), leerdoelen, oefenmodus, herinneringen, data
 
+### Text-to-Speech (Web Speech API)
+- `speak(text, lang)` — spreekt tekst uit via browser-TTS; Pools op `pl-PL` (rate 0.82), Nederlands op `nl-NL`
+- `speakCurrentCard()` — speelt de juiste kant van de huidige kaart af
+- **Auto-uitspraak**: bij elke kaart in flashcard- en luistermodus (instelbaar)
+- **🔊 knop**: op elke flashcard (replay), in de woordenlijst per woord, en op elke voorbeeldzin
+- **Luistermodus**: altijd auto-play, geen tekst zichtbaar
+
 ### Instellingen
 - **Leerdoelen**: dagelijks doel slider, sessiegrootte slider
-- **Oefenmodus**: richting select, retry toggle, grammatica toggle, voorbeeldzinnen toggle
+- **Oefenmodus**: richting select, retry toggle, grammatica toggle, voorbeeldzinnen toggle, automatische uitspraak toggle
 - **Herinneringen**: Notification API reminder met tijdkiezer (alleen als doel niet gehaald)
 - **Account & Sync**: inloggen/uitloggen, sync-status
 - **Data**: export naar JSON, import van JSON, reset alle voortgang
@@ -186,6 +194,16 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 - Auth-scherm `display:flex` zat op outer `.screen` div → overschreef CSS `display:none` → scherm was altijd zichtbaar en scrollbaar. Fix: flex naar inner wrapper verplaatst
 - `overflow:hidden` toegevoegd aan auth-scherm
 - Versie: v3.2
+
+### Sessie 3 (13 mei 2026, in Claude Code) — v3.3
+- **Luistermodus**: derde sessieknop 🎧; kaart toont 🔊-knop i.p.v. tekst; Pools auto-afspelen; altijd PL→NL; antwoord typen in het Nederlands
+- **TTS-engine**: `speak()` + `speakCurrentCard()` via Web Speech API (`pl-PL`, rate 0.82); werkt in Safari iOS/macOS en Chrome
+- **Auto-uitspraak**: bij flashcard en luistermodus instelbaar via toggle; alleen bij PL-vraag
+- **🔊 replay-knop**: op elke flashcard; 🔊 op elk woord in woordenlijst; 🔊 op elke voorbeeldzin in sessie en woordenlijst
+- **Type-modus altijd NL→PL**: `getDir()` retourneert `nl-pl` als `sess.mode === 'type'`
+- **Type-modus filter**: alleen woorden met `modeStats.flashcard >= 1`; alert als pool leeg
+- **Vergelijk-blok bij fout**: `showTypedResult()` toont "Jij / Goed" bij fout of fuzzy match; fuzzy krijgt ≈ Bijna! in geel
+- Versie: v3.3
 
 ---
 
