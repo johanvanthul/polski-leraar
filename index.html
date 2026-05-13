@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#0D1117">
 <title>Polski Leraar</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --bg: #0D1117; --surface: #161B22; --card: #1C2333; --card-hover: #243044;
@@ -75,13 +76,45 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 </head>
 <body>
 
+<!-- AUTH -->
+<div id="auth" class="screen" style="display:flex;flex-direction:column;min-height:100dvh;justify-content:center;padding:40px 20px">
+  <div style="text-align:center;margin-bottom:40px">
+    <div style="font-size:52px;margin-bottom:16px">🇵🇱</div>
+    <div style="font-size:28px;font-weight:800;margin-bottom:8px">Polski Leraar</div>
+    <div style="font-size:14px;color:var(--text-muted);line-height:1.6">Log in om je voortgang op te slaan<br>en te synchroniseren tussen apparaten.</div>
+  </div>
+  <div id="auth-msg" style="display:none;padding:10px 16px;border-radius:12px;font-size:13px;margin-bottom:16px;text-align:center"></div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+    <input type="email" id="auth-email" placeholder="E-mailadres" autocomplete="email" style="padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:16px;width:100%">
+    <input type="password" id="auth-pw" placeholder="Wachtwoord (min. 6 tekens)" autocomplete="current-password" style="padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:16px;width:100%">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <button onclick="sbSignIn()" class="big-btn" style="justify-content:center;background:linear-gradient(135deg,var(--accent),#D4543E)">
+      <span style="font-size:16px;font-weight:700">Inloggen</span>
+    </button>
+    <button onclick="sbSignUp()" class="big-btn" style="justify-content:center;background:linear-gradient(135deg,var(--purple),#6247E5)">
+      <span style="font-size:16px;font-weight:700">Nieuw account aanmaken</span>
+    </button>
+  </div>
+  <div style="text-align:center;margin-top:20px">
+    <button onclick="sbSkip()" style="background:none;border:none;color:var(--text-muted);font-size:13px;padding:8px;cursor:pointer;text-decoration:underline">Ga verder zonder account →</button>
+  </div>
+  <div id="auth-spinner" style="display:none;text-align:center;margin-top:16px;color:var(--text-muted);font-size:13px">⏳ Even wachten...</div>
+</div>
+
 <!-- HOME -->
 <div id="home" class="screen active">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
     <div>
       <div style="font-size:13px;color:var(--text-muted);font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Polski Leraar</div>
-      <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Cześć, Johan! 🇵🇱</div>
-      <div id="home-level" style="margin-top:6px"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Cześć, Johan!</div>
+        <span style="font-size:24px">🇵🇱</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+        <div id="home-level"></div>
+        <div id="home-sync"></div>
+      </div>
     </div>
     <div style="display:flex;gap:8px">
       <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
@@ -271,7 +304,11 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <button onclick="resetAllData()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Reset</button>
     </div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.0</div>
+  <div class="settings-section">
+    <div class="settings-section-title">☁️ Account & Sync</div>
+    <div id="auth-settings"></div>
+  </div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.1</div>
 </div>
 
 <script>
@@ -548,6 +585,9 @@ function endSession() { showScreen('home'); }
 function renderHome() {
   var lvl = LEVEL.compute();
   document.getElementById('home-level').innerHTML = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:'+lvl.color+'22;color:'+lvl.color+'">'+lvl.code+' · '+lvl.label+'</span>';
+  var syncEl = document.getElementById('home-sync');
+  if (sbUser) syncEl.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--green-soft);color:var(--green)">☁️ Gesynchroniseerd</span>';
+  else syncEl.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);cursor:pointer" onclick="showScreen(\'settings\')">☁️ Niet opgeslagen</span>';
   const mastered = cards.filter(c => c.box >= 4).length;
   const due = getDueCards().length;
   const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
@@ -710,7 +750,9 @@ function finishSession() {
   stats.sessionsCompleted++; stats.lastSessionDate = Date.now();
   var levelAfter = LEVEL.compute().code;
   sess.levelUp = levelBefore !== levelAfter ? levelAfter : null;
-  save('stats', stats); save('cards', cards); renderResult(); showScreen('result');
+  save('stats', stats); save('cards', cards);
+  sbSyncUp();
+  renderResult(); showScreen('result');
 }
 
 function checkExpansion() {
@@ -807,6 +849,15 @@ function renderWords() {
 // SETTINGS
 // ═══════════════════════════════════════
 function renderSettings() {
+  var authEl = document.getElementById('auth-settings');
+  if (authEl) {
+    if (sbUser) {
+      authEl.innerHTML = '<div class="setting-row"><div><div class="label">Ingelogd als</div><div class="sublabel">'+sbUser.email+'</div></div><button onclick="sbSignOut()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Uitloggen</button></div>'
+        +'<div class="setting-row" style="border:none"><div><div class="label">Automatische sync</div><div class="sublabel">Voortgang opgeslagen in de cloud</div></div><span style="font-size:20px">☁️</span></div>';
+    } else {
+      authEl.innerHTML = '<div class="setting-row"><div><div class="label">Niet ingelogd</div><div class="sublabel">Voortgang alleen op dit apparaat</div></div><button onclick="showScreen(\'auth\')" class="data-btn" style="background:var(--accent-soft);color:var(--accent)">Inloggen</button></div>';
+    }
+  }
   document.getElementById('set-daily').value = settings.dailyGoal;
   document.getElementById('set-daily-val').textContent = settings.dailyGoal;
   document.getElementById('set-session').value = settings.sessionSize;
@@ -830,12 +881,19 @@ function saveSettings() {
   settings.showExamples = document.getElementById('set-examples').classList.contains('on');
   settings.reminderTime = document.getElementById('set-remind-time').value;
   save('settings', settings);
+  sbSyncUp();
 }
 function resetAllData() {
   if (!confirm('Weet je zeker dat je alle voortgang wilt resetten? Dit kan niet ongedaan worden.')) return;
   cards = WORD_DB.filter(function(w){return !w.pool;}).map(function(w){return makeCard(w);});
   stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:dateStr()};
-  save('cards', cards); save('stats', stats); showScreen('home');
+  save('cards', cards); save('stats', stats);
+  if (sb && sbUser) {
+    sb.from('user_cards').delete().eq('user_id', sbUser.id).then(function(){});
+    sb.from('user_stats').delete().eq('user_id', sbUser.id).then(function(){});
+    sb.from('user_settings').delete().eq('user_id', sbUser.id).then(function(){});
+  }
+  showScreen('home');
 }
 
 // ═══════════════════════════════════════
@@ -916,10 +974,158 @@ function levenshtein(a, b) {
 }
 
 // ═══════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════
+var SB_URL = 'https://elcrpgsiyiehxjoerkiu.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsY3JwZ3NpeWllaHhqb2Vya2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NjI4NzksImV4cCI6MjA5NDIzODg3OX0.bLlEDZFDC15ih3mfkJzq6ToSVmxUNyFXlSOCGgf1Gd8';
+var sb = null;
+var sbUser = null;
+
+async function initSupabase() {
+  try {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+    var { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      sbUser = session.user;
+      await sbSyncDown();
+      renderHome();
+    } else if (load('sbSkip')) {
+      // user chose to skip — stay on home
+    } else {
+      showScreen('auth');
+    }
+    sb.auth.onAuthStateChange(async function(event, session) {
+      if (event === 'SIGNED_IN' && session) {
+        sbUser = session.user;
+        await sbSyncDown();
+        showScreen('home'); renderHome();
+      } else if (event === 'SIGNED_OUT') {
+        sbUser = null;
+      }
+      renderHome();
+    });
+  } catch(e) {
+    console.warn('Supabase niet bereikbaar:', e.message);
+    // Geen verbinding — ga gewoon door met localStorage
+  }
+}
+
+async function sbSyncDown() {
+  if (!sb || !sbUser) return;
+  try {
+    // Cards
+    var { data: rows, error: ce } = await sb.from('user_cards').select('*').eq('user_id', sbUser.id);
+    if (!ce && rows) {
+      if (rows.length > 0) {
+        cards = rows.map(function(r) {
+          var db = WORD_DB.find(function(w){return w.id===r.word_id;}) || {};
+          return { id:r.word_id, pl:db.pl||'', nl:db.nl||'', cat:db.cat||'dagelijks',
+            ex_pl:db.ex_pl||'', ex_nl:db.ex_nl||'', diff:db.diff||1, gram:db.gram||'',
+            box:r.box, lastReview:r.last_review, reviews:r.reviews, streak:r.streak,
+            misses:r.misses, modeStats:{flashcard:r.mode_flashcard||0,type:r.mode_type||0},
+            added:r.added_at };
+        });
+        var ids = new Set(cards.map(function(c){return c.id;}));
+        WORD_DB.filter(function(w){return !w.pool&&!ids.has(w.id);}).forEach(function(w){cards.push(makeCard(w));});
+        save('cards', cards);
+      } else {
+        // Eerste login: migreer vanuit localStorage
+        await sbSyncUp();
+      }
+    }
+    // Stats
+    var { data: sRow } = await sb.from('user_stats').select('*').eq('user_id', sbUser.id).maybeSingle();
+    if (sRow) {
+      stats = { streak:sRow.streak, bestStreak:sRow.best_streak, totalReviews:sRow.total_reviews,
+        todayReviews:sRow.today_reviews, todayCorrect:sRow.today_correct,
+        lastSessionDate:sRow.last_session_date, sessionsCompleted:sRow.sessions_completed,
+        todayDate:sRow.today_date, wordsLearned:sRow.words_learned||0 };
+      save('stats', stats);
+    }
+    // Settings
+    var { data: stRow } = await sb.from('user_settings').select('*').eq('user_id', sbUser.id).maybeSingle();
+    if (stRow) {
+      settings = { dailyGoal:stRow.daily_goal, sessionSize:stRow.session_size,
+        direction:stRow.direction, retryWrong:stRow.retry_wrong,
+        showGrammar:stRow.show_grammar, showExamples:stRow.show_examples,
+        reminderEnabled:stRow.reminder_enabled, reminderTime:stRow.reminder_time };
+      save('settings', settings);
+    }
+  } catch(e) { console.warn('syncDown mislukt:', e.message); }
+}
+
+async function sbSyncUp() {
+  if (!sb || !sbUser) return;
+  try {
+    var cardRows = cards.map(function(c) {
+      return { user_id:sbUser.id, word_id:c.id, box:c.box, last_review:c.lastReview,
+        reviews:c.reviews, streak:c.streak, misses:c.misses||0,
+        mode_flashcard:(c.modeStats||{}).flashcard||0, mode_type:(c.modeStats||{}).type||0,
+        added_at:c.added||Date.now() };
+    });
+    if (cardRows.length) await sb.from('user_cards').upsert(cardRows, {onConflict:'user_id,word_id'});
+    await sb.from('user_stats').upsert({
+      user_id:sbUser.id, streak:stats.streak, best_streak:stats.bestStreak,
+      total_reviews:stats.totalReviews, today_reviews:stats.todayReviews,
+      today_correct:stats.todayCorrect, last_session_date:stats.lastSessionDate,
+      sessions_completed:stats.sessionsCompleted, today_date:stats.todayDate,
+      words_learned:stats.wordsLearned||0,
+    }, {onConflict:'user_id'});
+    await sb.from('user_settings').upsert({
+      user_id:sbUser.id, daily_goal:settings.dailyGoal, session_size:settings.sessionSize,
+      direction:settings.direction, retry_wrong:settings.retryWrong,
+      show_grammar:settings.showGrammar, show_examples:settings.showExamples,
+      reminder_enabled:settings.reminderEnabled, reminder_time:settings.reminderTime,
+    }, {onConflict:'user_id'});
+  } catch(e) { console.warn('syncUp mislukt (offline?):', e.message); }
+}
+
+// Auth functies
+async function sbSignIn() {
+  var email = document.getElementById('auth-email').value.trim();
+  var pw = document.getElementById('auth-pw').value;
+  if (!email || !pw) { sbAuthMsg('Vul je e-mailadres en wachtwoord in.'); return; }
+  sbAuthLoading(true);
+  var { error } = await sb.auth.signInWithPassword({email:email, password:pw});
+  sbAuthLoading(false);
+  if (error) { sbAuthMsg(error.message==='Invalid login credentials'?'Ongeldig e-mailadres of wachtwoord.':error.message); }
+}
+
+async function sbSignUp() {
+  var email = document.getElementById('auth-email').value.trim();
+  var pw = document.getElementById('auth-pw').value;
+  if (!email || !pw) { sbAuthMsg('Vul je e-mailadres en wachtwoord in.'); return; }
+  if (pw.length < 6) { sbAuthMsg('Wachtwoord moet minstens 6 tekens zijn.'); return; }
+  sbAuthLoading(true);
+  var { data, error } = await sb.auth.signUp({email:email, password:pw});
+  sbAuthLoading(false);
+  if (error) { sbAuthMsg(error.message); return; }
+  if (data.user && !data.session) sbAuthMsg('✓ Check je e-mail om je account te bevestigen.', true);
+}
+
+function sbSkip() { save('sbSkip', true); showScreen('home'); renderHome(); }
+
+async function sbSignOut() {
+  if (sb) await sb.auth.signOut();
+  sbUser = null; renderHome(); renderSettings();
+}
+
+function sbAuthMsg(msg, ok) {
+  var el = document.getElementById('auth-msg');
+  el.style.display='block'; el.textContent=msg;
+  el.style.background = ok ? 'var(--green-soft)' : 'var(--red-soft)';
+  el.style.color = ok ? 'var(--green)' : 'var(--red)';
+}
+function sbAuthLoading(on) {
+  document.getElementById('auth-spinner').style.display = on ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
 initData(); renderHome();
 if (settings.reminderEnabled) scheduleReminder();
+initSupabase();
 document.getElementById('set-remind-time').addEventListener('change', function() {
   settings.reminderTime = document.getElementById('set-remind-time').value;
   save('settings', settings); if (settings.reminderEnabled) scheduleReminder(); updateReminderStatus();
