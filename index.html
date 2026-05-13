@@ -319,7 +319,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.3</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.4</div>
 </div>
 
 <script>
@@ -1103,9 +1103,9 @@ async function sbSyncDown() {
           var db = WORD_DB.find(function(w){return w.id===r.word_id;}) || {};
           return { id:r.word_id, pl:db.pl||'', nl:db.nl||'', cat:db.cat||'dagelijks',
             ex_pl:db.ex_pl||'', ex_nl:db.ex_nl||'', diff:db.diff||1, gram:db.gram||'',
-            box:r.box, lastReview:r.last_review, reviews:r.reviews, streak:r.streak,
+            box:r.box, lastReview:parseInt(r.last_review)||0, reviews:r.reviews, streak:r.streak,
             misses:r.misses, modeStats:{flashcard:r.mode_flashcard||0,type:r.mode_type||0},
-            added:r.added_at };
+            added:parseInt(r.added_at)||Date.now() };
         });
         var ids = new Set(cards.map(function(c){return c.id;}));
         WORD_DB.filter(function(w){return !w.pool&&!ids.has(w.id);}).forEach(function(w){cards.push(makeCard(w));});
@@ -1115,13 +1115,22 @@ async function sbSyncDown() {
         await sbSyncUp();
       }
     }
-    // Stats
+    // Stats — conflict resolution: meest recente wint
     var { data: sRow } = await sb.from('user_stats').select('*').eq('user_id', sbUser.id).maybeSingle();
     if (sRow) {
-      stats = { streak:sRow.streak, bestStreak:sRow.best_streak, totalReviews:sRow.total_reviews,
-        todayReviews:sRow.today_reviews, todayCorrect:sRow.today_correct,
-        lastSessionDate:sRow.last_session_date, sessionsCompleted:sRow.sessions_completed,
-        todayDate:sRow.today_date, wordsLearned:sRow.words_learned||0 };
+      var sbLastSession = parseInt(sRow.last_session_date) || 0;
+      var localLastSession = stats.lastSessionDate || 0;
+      if (sbLastSession >= localLastSession) {
+        // Supabase is nieuwer of gelijk — gebruik Supabase
+        stats = { streak:sRow.streak, bestStreak:sRow.best_streak,
+          totalReviews:sRow.total_reviews, todayReviews:sRow.today_reviews,
+          todayCorrect:sRow.today_correct, lastSessionDate:sbLastSession,
+          sessionsCompleted:sRow.sessions_completed, todayDate:sRow.today_date,
+          wordsLearned:sRow.words_learned||0 };
+      } else {
+        // Lokale data is nieuwer — herstel Supabase op de achtergrond
+        sbSyncUp();
+      }
       save('stats', stats);
     }
     // Settings
