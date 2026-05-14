@@ -319,7 +319,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.4</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.5</div>
 </div>
 
 <script>
@@ -712,9 +712,10 @@ function renderSessionCard() {
   }
   document.getElementById('sess-tap-hint').style.display = sess.mode==='flashcard' ? 'block' : 'none';
 
-  // 🔊 replay-knop: toon bij flashcard en listen (niet bij type — input heeft focus)
+  // 🔊 replay-knop: alleen bij PL→NL flashcard (Pools is de vraag, nuttig om te herhalen)
+  // Bij NL→PL: de 🔊 knop verschijnt pas NA het tonen van het antwoord (in showAnswer)
   var spkBtn = document.getElementById('sess-speak-btn');
-  spkBtn.style.display = (sess.mode === 'flashcard') ? 'block' : 'none';
+  spkBtn.style.display = (sess.mode === 'flashcard' && sess.dir === 'pl-nl') ? 'block' : 'none';
 
   document.getElementById('sess-answer-area').style.display = 'none'; document.getElementById('sess-answer-area').innerHTML = '';
   document.getElementById('sess-flash-btns').style.display = 'none';
@@ -729,24 +730,36 @@ function renderSessionCard() {
     setTimeout(function(){ var inp = document.getElementById('type-input'); if(inp) { inp.focus(); inp.onkeydown = function(e){ if(e.key==='Enter'&&inp.value.trim()) submitTyped(); }; } }, 100);
   } else { ta.style.display = 'none'; ta.innerHTML = ''; }
 
-  // Auto-uitspraak
-  if (settings.autoSpeak || isListen) {
-    var plText = sess.dir === 'pl-nl' ? c.pl : null;
-    if (isListen) plText = c.pl;
-    if (plText) speak(plText);
+  // Auto-uitspraak: alleen als Pools de vraag is (PL→NL of luistermodus)
+  // Bij NL→PL flashcard: Pools wordt gespeeld NA het antwoord tonen (in showAnswer)
+  if ((settings.autoSpeak && sess.dir === 'pl-nl') || isListen) {
+    speak(c.pl);
   }
 }
 
 function handleCardTap() { if (sess.mode !== 'flashcard' || sess.showAnswer) return; showAnswer(); }
 
 function showAnswer() {
-  var c = sess.cards[sess.idx], answer = sess.dir === 'pl-nl' ? c.nl : c.pl;
+  var c = sess.cards[sess.idx];
   sess.showAnswer = true;
   document.getElementById('sess-tap-hint').style.display = 'none';
+  document.getElementById('sess-speak-btn').style.display = 'none'; // verberg vraag-knop
+
+  var safePl = c.pl.replace(/'/g, "\\'");
   var aa = document.getElementById('sess-answer-area');
   aa.style.display = 'block';
-  aa.innerHTML = '<div style="width:40px;height:2px;background:var(--accent);margin:16px auto;border-radius:1px"></div><div style="font-size:26px;font-weight:600;color:var(--accent)">'+answer+'</div>';
+  // Altijd Pools prominent met 🔊, daarna Nederlandse vertaling
+  aa.innerHTML = '<div style="width:40px;height:2px;background:var(--accent);margin:16px auto;border-radius:1px"></div>'
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px">'
+    + '<div style="font-size:26px;font-weight:700;color:var(--accent)">'+c.pl+'</div>'
+    + '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:10px;padding:6px 12px;font-size:16px;cursor:pointer">🔊</button>'
+    + '</div>'
+    + '<div style="font-size:15px;color:var(--text-muted)">'+c.nl+'</div>';
   aa.className = 'anim-slide';
+
+  // Auto-uitspraak Pools bij NL→PL (eerste keer dat je het Pools hoort)
+  if (settings.autoSpeak && sess.dir === 'nl-pl') speak(c.pl);
+
   showInfoArea(c);
   document.getElementById('sess-flash-btns').style.display = 'flex';
 }
@@ -774,17 +787,24 @@ function showTypedResult(correct, answer, c, typedInput) {
   var isFuzzy = correct && typedInput;
   var label = isFuzzy ? '≈ Bijna!' : correct ? '✓ Goed!' : '✗ Niet goed';
   var color = isFuzzy ? 'var(--yellow)' : correct ? 'var(--green)' : 'var(--red)';
+  var safePl = c.pl.replace(/'/g, "\\'");
+  var speakBtn = '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:8px;padding:4px 10px;font-size:14px;cursor:pointer;margin-left:6px">🔊</button>';
   var html = '<div style="font-size:20px;font-weight:700;color:'+color+'">'+label+'</div>';
   if (typedInput) {
-    // Toon verschil: wat getypt vs wat goed is
+    // Toon verschil: wat getypt vs wat goed is, met 🔊 bij het goede (Poolse) antwoord
     html += '<div style="margin-top:12px;background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left">';
     html += '<div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Vergelijk</div>';
     html += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:10px;color:var(--red);font-weight:700;min-width:36px;text-transform:uppercase">Jij</span><span style="font-size:15px;font-family:var(--mono);color:var(--red)">'+typedInput+'</span></div>';
-    html += '<div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:10px;color:var(--green);font-weight:700;min-width:36px;text-transform:uppercase">Goed</span><span style="font-size:15px;font-family:var(--mono);color:var(--green)">'+answer+'</span></div>';
+    html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:10px;color:var(--green);font-weight:700;min-width:36px;text-transform:uppercase">Goed</span><span style="font-size:15px;font-family:var(--mono);color:var(--green)">'+answer+'</span>'+speakBtn+'</div>';
     html += '</div>';
   } else {
-    html += '<div style="font-size:18px;color:var(--accent);margin-top:8px;font-weight:600">'+answer+'</div>';
+    // Correct of skip: toon Pools antwoord met 🔊
+    html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px">'
+      + '<div style="font-size:18px;color:var(--accent);font-weight:700">'+answer+'</div>'
+      + speakBtn + '</div>';
   }
+  // Auto-uitspraak correct Pools antwoord
+  if (settings.autoSpeak) speak(c.pl);
   document.getElementById('sess-type-area').innerHTML = html;
   showInfoArea(c);
   var btn = document.createElement('button'); btn.className = 'big-btn';
@@ -1046,8 +1066,7 @@ function speak(text, lang) {
 }
 function speakCurrentCard() {
   var c = sess.cards[sess.idx]; if (!c) return;
-  var isPolish = sess.dir === 'pl-nl' || sess.mode === 'listen';
-  speak(isPolish ? c.pl : c.nl, isPolish ? 'pl-PL' : 'nl-NL');
+  speak(c.pl); // altijd Pools — luisterknop speelt nooit Nederlands
 }
 
 function levenshtein(a, b) {
