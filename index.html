@@ -290,14 +290,14 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
   <div class="settings-section">
     <div class="settings-section-title">🔔 Herinneringen</div>
     <div class="setting-row">
-      <div><div class="label">Dagelijkse reminder</div><div class="sublabel">Push-notificatie</div></div>
+      <div><div class="label">Dagelijkse reminder</div><div class="sublabel">Alleen als Safari open is</div></div>
       <div id="set-remind" class="toggle" onclick="toggleReminder(this)"></div>
     </div>
     <div id="remind-time-row" class="setting-row" style="display:none">
       <div><div class="label">Tijdstip</div></div>
       <input type="time" id="set-remind-time" value="20:00" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px;font-family:var(--font)">
     </div>
-    <div id="remind-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;padding:0 2px"></div>
+    <div id="remind-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;padding:0 2px;line-height:1.6"></div>
   </div>
   <div class="settings-section">
     <div class="settings-section-title">💾 Data</div>
@@ -319,7 +319,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.5</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.6</div>
 </div>
 
 <script>
@@ -1020,9 +1020,15 @@ function importData(event) {
 var reminderTimer = null;
 function toggleReminder(el) {
   if (!el.classList.contains('on')) {
-    if (!('Notification' in window)) { alert('Je browser ondersteunt geen notificaties.'); return; }
+    if (!('Notification' in window)) {
+      alert('Je browser ondersteunt geen notificaties.');
+      return;
+    }
     Notification.requestPermission().then(function(perm) {
-      if (perm !== 'granted') { alert('Notificaties zijn geblokkeerd. Sta ze toe in je browser-instellingen.'); return; }
+      if (perm !== 'granted') {
+        alert('Notificaties zijn geblokkeerd. Sta ze toe in je Safari-instellingen.');
+        return;
+      }
       el.classList.add('on'); settings.reminderEnabled = true;
       document.getElementById('remind-time-row').style.display = 'flex';
       scheduleReminder(); save('settings', settings); updateReminderStatus();
@@ -1050,7 +1056,14 @@ function scheduleReminder() {
 }
 function updateReminderStatus() {
   var el = document.getElementById('remind-status');
-  el.textContent = settings.reminderEnabled ? '⏰ Herinnering om '+settings.reminderTime+' als je je doel nog niet hebt gehaald.' : 'Schakel in om dagelijks herinnerd te worden.';
+  if (!settings.reminderEnabled) {
+    el.innerHTML = 'Schakel in om een herinnering te krijgen.';
+    return;
+  }
+  el.innerHTML = '⏰ Herinnering ingesteld om <strong>'+settings.reminderTime+'</strong>.'
+    + '<br><span style="color:var(--yellow)">⚠️ Werkt alleen als Safari op dat moment open en actief is. '
+    + 'Sluit je de app of vergrendel je iPhone, dan verschijnt er géén melding — '
+    + 'dat vereist een push-server die deze app niet heeft.</span>';
 }
 
 // ═══════════════════════════════════════
