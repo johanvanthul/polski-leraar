@@ -1,66 +1,109 @@
 // Polski Leraar — Supabase Edge Function: send-reminders
-// Wordt elk uur aangeroepen via pg_cron.
-// Stuurt Web Push naar gebruikers die:
-//   - reminder_enabled = true hebben
-//   - een push_subscription hebben opgeslagen
-//   - hun dagelijks doel nog niet hebben gehaald
-//   - het ingestelde reminder-tijdstip nu is (±5 minuten)
+// Wordt elk uur aangeroepen via pg_cron (0 * * * *).
+// Stuurt Web Push naar gebruikers waarvan het reminder-tijdstip ±10 min geleden is
+// én die hun dagelijks doel nog niet gehaald hebben.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webPush from 'npm:web-push@3.6.7';
 
+// ─── Tijdzone ──────────────────────────────────────────────────────────────
+// De Edge Function draait in UTC. reminder_time is ingesteld in Amsterdam-tijd.
+// We converteren UTC → Amsterdam voor de vergelijking.
+const TZ = 'Europe/Amsterdam';
+
+function amsterdamNow(): { h: number; m: number } {
+  const parts = new Intl.DateTimeFormat('nl-NL', {
+    timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  return {
+    h: parseInt(parts.find(p => p.type === 'hour')!.value),
+    m: parseInt(parts.find(p => p.type === 'minute')!.value),
+  };
+}
+
+function amsterdamDateStr(): string {
+  // sv-SE locale geeft YYYY-MM-DD — zelfde formaat als de app gebruikt
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date());
+}
+
+// ─── VAPID ─────────────────────────────────────────────────────────────────
 const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
 
-webPush.setVapidDetails(
-  'mailto:johanvanthul@gmail.com',
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY,
-);
+webPush.setVapidDetails('mailto:johanvanthul@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+// ─── Handler ───────────────────────────────────────────────────────────────
 Deno.serve(async (_req) => {
+  const local = amsterdamNow();
+  const today = amsterdamDateStr();
+  const nowUtcIso = new Date().toISOString();
+  const log: string[] = [
+    `Uitvoering: ${nowUtcIso} UTC`,
+    `Amsterdam lokaal: ${local.h}:${String(local.m).padStart(2, '0')}, datum: ${today}`,
+  ];
+
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // Haal alle gebruikers op met reminder ingeschakeld en een subscription
   const { data: settingsList, error } = await supabase
     .from('user_settings')
     .select('user_id, reminder_time, daily_goal, push_subscription')
     .eq('reminder_enabled', true)
     .not('push_subscription', 'is', null);
 
-  if (error) return new Response('DB error: ' + error.message, { status: 500 });
+  if (error) {
+    log.push(`DB fout: ${error.message}`);
+    return new Response(log.join('\n'), { status: 500 });
+  }
 
-  const now = new Date();
-  const results: string[] = [];
+  log.push(`Gebruikers met reminder + subscription: ${settingsList?.length ?? 0}`);
 
   for (const s of settingsList ?? []) {
-    if (!s.reminder_time || !s.push_subscription) continue;
+    const uid = s.user_id.slice(0, 8);
 
-    // Check of het nu het reminder-tijdstip is (±5 minuten tolerantie)
+    if (!s.reminder_time || !s.push_subscription) {
+      log.push(`${uid}: overgeslagen (ontbrekende reminder_time of subscription)`);
+      continue;
+    }
+
+    // ── Tijdstip check (Amsterdam lokaal) ──────────────────────────────────
     const [rh, rm] = s.reminder_time.split(':').map(Number);
-    const diffMin = (now.getHours() - rh) * 60 + (now.getMinutes() - rm);
-    if (diffMin < 0 || diffMin > 5) continue;
+    const currentMin = local.h * 60 + local.m;
+    const targetMin  = rh * 60 + rm;
+    // Absolute verschil in minuten, met correct middernacht-omloop
+    const rawDiff = Math.abs(currentMin - targetMin);
+    const diffMin = Math.min(rawDiff, 1440 - rawDiff);
 
-    // Check of dagelijks doel al gehaald is
+    log.push(
+      `${uid}: reminder=${s.reminder_time}, nu=${local.h}:${String(local.m).padStart(2,'0')}, verschil=${diffMin}min`,
+    );
+
+    if (diffMin > 10) {
+      log.push(`  → buiten ±10min venster, overgeslagen`);
+      continue;
+    }
+
+    // ── Dagelijks doel check ───────────────────────────────────────────────
     const { data: stats } = await supabase
       .from('user_stats')
       .select('today_reviews, today_date')
       .eq('user_id', s.user_id)
       .maybeSingle();
 
-    const today = new Date().toLocaleDateString('sv-SE');
+    // today_date in de app is ook Amsterdam-tijd (dateStr gebruikt toLocaleDateString('sv-SE') in de browser)
     const done = (stats?.today_date === today ? stats.today_reviews : 0) ?? 0;
     const goal = s.daily_goal ?? 20;
 
+    log.push(`  → voortgang: ${done}/${goal} (DB today_date: ${stats?.today_date ?? 'leeg'}, verwacht: ${today})`);
+
     if (done >= goal) {
-      results.push(`${s.user_id}: doel gehaald (${done}/${goal}), geen notificatie`);
+      log.push(`  → doel gehaald, geen notificatie`);
       continue;
     }
 
-    // Stuur push
+    // ── Push sturen ────────────────────────────────────────────────────────
     try {
       const subscription = JSON.parse(s.push_subscription);
       await webPush.sendNotification(
@@ -70,11 +113,11 @@ Deno.serve(async (_req) => {
           body:  `Je hebt nog ${goal - done} woorden te gaan vandaag.`,
         }),
       );
-      results.push(`${s.user_id}: notificatie verstuurd`);
+      log.push(`  → ✅ Notificatie verstuurd`);
     } catch (e) {
-      results.push(`${s.user_id}: push mislukt — ${e.message}`);
+      log.push(`  → ❌ Push mislukt: ${e.message}`);
     }
   }
 
-  return new Response(results.join('\n') || 'Geen reminders verzonden', { status: 200 });
+  return new Response(log.join('\n'), { status: 200 });
 });
