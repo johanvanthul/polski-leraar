@@ -319,7 +319,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.6</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.7</div>
 </div>
 
 <script>
@@ -1017,20 +1017,69 @@ function importData(event) {
 // ═══════════════════════════════════════
 // REMINDERS
 // ═══════════════════════════════════════
+// ── Web Push / Service Worker ──────────────────────────────────────────────
+var VAPID_PUBLIC_KEY = 'BG0iXJDMVgWHil-kLlKsgcAyS3BT05t6crFWiyggWrmX_76en7fiBITU8xeEQYwhdRMJ4MdpBps0HNAmegZK67I';
+var swReg = null;
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var raw = atob(base64);
+  var output = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+function initServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/polski-leraar/sw.js').then(function(reg) {
+    swReg = reg;
+    // Als reminder al aanstond: herverbind de subscription
+    if (settings.reminderEnabled) updateReminderStatus();
+  }).catch(function(e) { console.warn('SW registratie mislukt:', e.message); });
+}
+
+async function subscribeToPush() {
+  if (!swReg) return null;
+  try {
+    var existing = await swReg.pushManager.getSubscription();
+    if (existing) return existing;
+    return await swReg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  } catch(e) {
+    console.warn('Push subscribe mislukt:', e.message);
+    return null;
+  }
+}
+
+async function savePushSubscription(sub) {
+  if (!sb || !sbUser || !sub) return;
+  await sb.from('user_settings').update({
+    push_subscription: JSON.stringify(sub)
+  }).eq('user_id', sbUser.id);
+}
+
+// ── Reminders ──────────────────────────────────────────────────────────────
 var reminderTimer = null;
+
 function toggleReminder(el) {
   if (!el.classList.contains('on')) {
     if (!('Notification' in window)) {
       alert('Je browser ondersteunt geen notificaties.');
       return;
     }
-    Notification.requestPermission().then(function(perm) {
+    Notification.requestPermission().then(async function(perm) {
       if (perm !== 'granted') {
         alert('Notificaties zijn geblokkeerd. Sta ze toe in je Safari-instellingen.');
         return;
       }
       el.classList.add('on'); settings.reminderEnabled = true;
       document.getElementById('remind-time-row').style.display = 'flex';
+      // Probeer push subscription op te zetten
+      var sub = await subscribeToPush();
+      await savePushSubscription(sub);
       scheduleReminder(); save('settings', settings); updateReminderStatus();
     });
   } else {
@@ -1040,12 +1089,14 @@ function toggleReminder(el) {
     save('settings', settings); updateReminderStatus();
   }
 }
+
 function scheduleReminder() {
   if (reminderTimer) clearTimeout(reminderTimer);
   if (!settings.reminderEnabled) return;
   var parts = settings.reminderTime.split(':'), h = parseInt(parts[0]), m = parseInt(parts[1]);
   var now = new Date(), target = new Date(); target.setHours(h, m, 0, 0);
   if (target <= now) target.setDate(target.getDate() + 1);
+  // Fallback: setTimeout voor als de app toevallig open is op het juiste moment
   reminderTimer = setTimeout(function() {
     var done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
     if (done < settings.dailyGoal) {
@@ -1054,16 +1105,23 @@ function scheduleReminder() {
     scheduleReminder();
   }, target - now);
 }
+
 function updateReminderStatus() {
   var el = document.getElementById('remind-status');
   if (!settings.reminderEnabled) {
-    el.innerHTML = 'Schakel in om een herinnering te krijgen.';
+    el.innerHTML = 'Schakel in om dagelijks een pushmelding te ontvangen.';
     return;
   }
-  el.innerHTML = '⏰ Herinnering ingesteld om <strong>'+settings.reminderTime+'</strong>.'
-    + '<br><span style="color:var(--yellow)">⚠️ Werkt alleen als Safari op dat moment open en actief is. '
-    + 'Sluit je de app of vergrendel je iPhone, dan verschijnt er géén melding — '
-    + 'dat vereist een push-server die deze app niet heeft.</span>';
+  var pushOk = swReg && ('PushManager' in window);
+  if (pushOk) {
+    el.innerHTML = '✅ Push-notificatie actief — je iPhone ontvangt een melding om '
+      + '<strong>'+settings.reminderTime+'</strong>, ook als de app gesloten is.'
+      + '<br><span style="color:var(--text-muted);font-size:11px">Vereist: iOS 16.4+, app op beginscherm, push-server actief.</span>';
+  } else {
+    el.innerHTML = '⏰ Herinnering om <strong>'+settings.reminderTime+'</strong> ingesteld.'
+      + '<br><span style="color:var(--yellow)">⚠️ Push werkt alleen als de app op het beginscherm staat (iOS 16.4+) en de push-server actief is. '
+      + 'Op dit moment valt de app terug op een melding alleen als Safari open is.</span>';
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1248,6 +1306,7 @@ function sbAuthLoading(on) {
 // ═══════════════════════════════════════
 initData(); renderHome();
 if (settings.reminderEnabled) scheduleReminder();
+initServiceWorker();
 initSupabase();
 document.getElementById('set-remind-time').addEventListener('change', function() {
   settings.reminderTime = document.getElementById('set-remind-time').value;
