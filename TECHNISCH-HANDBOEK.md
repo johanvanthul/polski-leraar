@@ -206,7 +206,13 @@ De app valt automatisch terug op localStorage — je kunt altijd blijven oefenen
 ```
 polski-leraar/
 ├── index.html                  # De hele app (HTML + CSS + JavaScript)
+├── sw.js                       # Service Worker — ontvangt Web Push en toont notificaties
 ├── schema.sql                  # Supabase database schema (eenmalig uitgevoerd)
+├── schema-push.sql             # Push-uitbreiding: push_subscription kolom + pg_cron (eenmalig)
+├── supabase/
+│   └── functions/
+│       └── send-reminders/
+│           └── index.ts        # Edge Function — stuurt push elk uur via pg_cron
 ├── CLAUDE-CODE-BRIEFING.md     # Context-document voor Claude Code
 ├── TECHNISCH-HANDBOEK.md       # Dit document
 └── README.md                   # GitHub repo beschrijving (optioneel)
@@ -248,6 +254,19 @@ Er is een bug: [beschrijf wat er gebeurt]. Fix het.
 - Open de app op het nieuwe apparaat → ⚙️ Instellingen → **Inloggen**
 - Zelfde e-mailadres en wachtwoord — al je voortgang verschijnt automatisch
 
+### "Mijn reminder/push-notificatie werkt niet"
+1. Check of de app op het **beginscherm** staat (niet via Safari-tab, maar via het icoontje)
+2. Check iOS versie: **16.4 of hoger** vereist voor web push
+3. Open Safari DevTools (Mac → Ontwikkelaar → jouw iPhone) → Console → schakel reminder uit en weer in → kijk naar `[SW]` en `[Push]` logs
+4. Check of `schema-push.sql` uitgevoerd is (kolom `push_subscription` in Supabase Table Editor)
+5. Check of de Edge Function draait: [supabase.com/dashboard/project/elcrpgsiyiehxjoerkiu/functions](https://supabase.com/dashboard/project/elcrpgsiyiehxjoerkiu/functions)
+
+### "De Edge Function opnieuw deployen"
+```bash
+cd ~/Projects/polski-leraar
+/tmp/supabase functions deploy send-reminders --project-ref elcrpgsiyiehxjoerkiu
+```
+
 ---
 
 ## 10. Wijzigingslog
@@ -261,3 +280,9 @@ Er is een bug: [beschrijf wat er gebeurt]. Fix het.
 | 13 mei 2026 | v3.1 | Supabase backend: auth-scherm, automatische sync, offline fallback, migratie van localStorage |
 | 13 mei 2026 | v3.2 | Auth-scherm overgeslagen bij laden (altijd direct naar home); auth-scherm overflow:hidden gefixed; Pools vlaggetje hersteld |
 | 13 mei 2026 | v3.3 | Luistermodus (🎧): hoor Pools, typ Nederlands; 🔊 uitspraakknop op kaarten, woordenlijst en voorbeeldzinnen; auto-uitspraak instelbaar; type-modus altijd NL→PL, alleen woorden met ≥1 flashcard-review, toont verschil bij fout antwoord |
+| 13 mei 2026 | v3.4 | Sync-bugfix: syncDown() overschreef lokale data met verouderde Supabase-data; bigint-kolommen kwamen als string uit PostgREST waardoor datumvergelijking faalde en streak resettete |
+| 14 mei 2026 | v3.5 | Audio-logica: 🔊 altijd Pools; bij NL→PL alleen knop ná antwoord tonen; Pools altijd prominent na antwoord; 🔊 in type-modus naast correct antwoord |
+| 14 mei 2026 | v3.6 | Reminders: misleidende "Push-notificatie" label verwijderd; duidelijke waarschuwing dat het alleen werkt als Safari open is |
+| 14 mei 2026 | v3.7 | Web Push via Service Worker (sw.js) + Supabase Edge Function (send-reminders); VAPID-sleutels gegenereerd; push subscription opgeslagen in Supabase |
+| 14 mei 2026 | v3.8 | Push-subscriptionbugs gefixed: race condition (swReady Promise), update→upsert, uitgebreide [SW]/[Push] debug-logging |
+| 14 mei 2026 | — | Edge Function timezone-fix: now.getHours() was UTC, reminder_time is Amsterdam-tijd (CEST=UTC+2); fix via Intl.DateTimeFormat('Europe/Amsterdam'); absolute tijdsverschil met middernacht-omloop; ±10min venster; volledige beslissingslog in response |

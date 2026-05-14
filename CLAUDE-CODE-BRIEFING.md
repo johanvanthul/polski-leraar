@@ -11,7 +11,8 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 `https://johanvanthul.github.io/polski-leraar/`
 
 ### Huidige tech stack
-- **Eén HTML-bestand** (`index.html`, ~1220 regels, ~94KB) — alle CSS, JS en data inline
+- **Eén HTML-bestand** (`index.html`, ~1300 regels, ~100KB) — alle CSS, JS en data inline
+- **Service Worker** (`sw.js`) — ontvangt Web Push en toont notificaties via Supabase Edge Function
 - **Geen framework** — vanilla JavaScript
 - **Opslag**: Supabase (primair) + `localStorage` (offline fallback)
 - **Auth**: Supabase Auth (email/wachtwoord)
@@ -22,7 +23,7 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 
 ---
 
-## Huidige features (v3.3)
+## Huidige features (v3.8)
 
 ### Leer-engine (Spaced Repetition)
 - **Leitner-systeem** met 7 boxen, intervallen: [0, 1, 3, 7, 14, 30, 60] dagen
@@ -34,6 +35,14 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 1. **Flashcards**: tap om antwoord te zien, zelf beoordelen (Wist ik / Wist ik niet). Richting instelbaar (mix/PL→NL/NL→PL). 🔊 replay-knop aanwezig.
 2. **Type**: altijd NL→PL. Alleen woorden met ≥1 flashcard-review. Fuzzy matching (Levenshtein, 20% tolerantie). Bij fout/bijna-goed: vergelijk-blok "Jij: X / Goed: Y". Bijna-goed toont ≈ Bijna! in geel.
 3. **Luisteren**: altijd PL→NL. Kaart toont grote 🔊-knop i.p.v. tekst, Pools woord speelt automatisch. Antwoord typen in het Nederlands.
+
+### Audio-logica (belangrijk voor toekomstige wijzigingen)
+- `speakCurrentCard()` spreekt **altijd Pools** — nooit Nederlands
+- **Flashcard PL→NL**: 🔊 knop bij de vraag (Pools is zichtbaar) + 🔊 in antwoordgebied
+- **Flashcard NL→PL**: géén 🔊 bij de Nederlandse vraag; knop verschijnt ná antwoord tonen (bij Pools)
+- **Na antwoord tonen**: altijd Pools prominent (groot, accent kleur, 🔊) + Nederlands eronder — ongeacht richting
+- **Type/luister-modus**: 🔊 naast het Poolse antwoord in resultaat; auto-uitspraak bij antwoord tonen
+- `showInfoArea()`: 🔊 op voorbeeldzin speelt `c.ex_pl` (Pools voorbeeld)
 
 ### Sessie-logica
 - Configureerbare sessiegrootte (5-20 woorden, default 10)
@@ -71,12 +80,13 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 
 ### Supabase backend
 - **Auth**: email/wachtwoord via Supabase Auth
-- **Tabellen**: `user_cards`, `user_stats`, `user_settings` — alle met RLS
+- **Tabellen**: `user_cards`, `user_stats`, `user_settings` (+ `push_subscription` kolom) — alle met RLS
 - **Sync-flow**:
   - App laadt altijd eerst localStorage (razendsnel, offline-first)
-  - Na login: `syncDown()` haalt Supabase-data op en overschrijft localStorage
+  - Na login: `syncDown()` haalt Supabase-data op; conflict resolution op `lastSessionDate` — lokaal wint als nieuwer
   - Na elke sessie/instelling: `syncUp()` pusht naar Supabase (async, non-blocking)
   - Eerste login: bestaande localStorage-data wordt automatisch gemigreerd
+  - Bigint-kolommen uit PostgREST komen als string — altijd `parseInt()` gebruiken bij inlezen
 - **Offline**: app werkt volledig zonder verbinding via localStorage
 - **Credentials**: URL `https://elcrpgsiyiehxjoerkiu.supabase.co`, anon key in `index.html`
 
@@ -106,11 +116,14 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 - **Data**: export naar JSON, import van JSON, reset alle voortgang
 - Auto-save bij slider/select wijzigingen, back-knop slaat op
 
-### Notificaties
-- Browser Notification API
-- Configuurbaar tijdstip (default 20:00)
-- Stuurt alleen als dagelijks doel nog niet gehaald
-- **Beperking**: werkt alleen als de pagina open is (geen Service Worker / background notifications)
+### Push-notificaties (Web Push)
+- **Service Worker** (`sw.js`): ontvangt `push` events, toont notificatie, opent app bij klik
+- **VAPID-sleutelpaar**: gegenereerd en opgeslagen; public key in `index.html`, private key als Supabase secret
+- **Subscription flow**: `initServiceWorker()` → registreert SW, slaat Promise op als `swReady` → `subscribeToPush()` awaits `swReady` (race condition fix) → `savePushSubscription()` upsert naar Supabase
+- **Edge Function** (`supabase/functions/send-reminders/index.ts`): draait elk uur via pg_cron; converteert UTC naar `Europe/Amsterdam` via `Intl.DateTimeFormat` vóór tijdsvergelijking (timezone fix); ±10min venster; volledige beslissingslog in response
+- **Vereisten voor werking**: iOS 16.4+, app op beginscherm, `schema-push.sql` uitgevoerd, Edge Function gedeployed
+- **Fallback**: `setTimeout` in de app voor als de app toevallig open is op het reminder-tijdstip
+- **Debug**: `[SW]` en `[Push]` log-tags in de browser-console; Edge Function response bevat per-user beslissingslog
 
 ---
 
@@ -122,9 +135,9 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 - Geen tests
 
 ### Notificaties
-- Alleen Notification API (geen Service Worker)
-- Werken niet als de browser/tab gesloten is
-- Op iOS Safari zeer beperkt
+- Web Push werkt alleen op iOS 16.4+ én de app moet op het beginscherm staan
+- Geen realtime deduplicatie — als de Edge Function twee keer binnen ±10min wordt aangeroepen kan er dubbel gestuurd worden
+- pg_cron vereist dat pg_net actief is in Supabase
 
 ### Sync
 - `syncUp()` is fire-and-forget — er is geen retry bij offline (app werkt gewoon via localStorage)
@@ -205,16 +218,50 @@ Johan — Nederlandse business analyst, 18 jaar getrouwd met een Poolse vrouw. H
 - **Vergelijk-blok bij fout**: `showTypedResult()` toont "Jij / Goed" bij fout of fuzzy match; fuzzy krijgt ≈ Bijna! in geel
 - Versie: v3.3
 
+### Sessie 4 (14 mei 2026, in Claude Code) — v3.4
+- **Sync conflict resolution**: `syncDown()` vergelijkt nu `lastSessionDate` lokaal vs Supabase; lokaal wint als nieuwer en triggert `syncUp()` om Supabase te repareren
+- **BigInt bug**: PostgREST geeft `bigint` kolommen terug als strings; `new Date("1747123456789")` was Invalid Date → streak-vergelijking faalde → streak resette naar 1; fix: `parseInt()` op `last_review`, `added_at`, `last_session_date`
+- Versie: v3.4
+
+### Sessie 4 (14 mei 2026, in Claude Code) — v3.5
+- **Audio-logica volledig herzien**: `speakCurrentCard()` spreekt altijd Pools; 🔊 bij NL→PL pas na antwoord tonen; Pools altijd prominent in antwoordgebied ongeacht richting; auto-uitspraak Pools bij antwoord reveal (NL→PL)
+- **Type-modus 🔊**: naast Pools antwoord in resultaat, zowel bij correct als in vergelijk-blok; auto-uitspraak Pools na indienen
+- Versie: v3.5
+
+### Sessie 4 (14 mei 2026, in Claude Code) — v3.6
+- **Eerlijke reminder-melding**: label "Push-notificatie" → "Alleen als Safari open is"; `updateReminderStatus()` toont gele waarschuwing met uitleg
+- Versie: v3.6
+
+### Sessie 4 (14 mei 2026, in Claude Code) — v3.7
+- **Service Worker Web Push**: `sw.js` aangemaakt; VAPID-sleutelpaar gegenereerd; `initServiceWorker()` registreert SW en slaat Promise op als `swReady`; `subscribeToPush()` wacht op SW + vraagt `pushManager.subscribe()`; `savePushSubscription()` upsert naar Supabase
+- **Edge Function**: `supabase/functions/send-reminders/index.ts` draait elk uur; stuurt push als doel niet gehaald
+- **Schema**: `schema-push.sql` met `push_subscription` kolom + pg_cron job
+- Versie: v3.7
+
+### Sessie 4 (14 mei 2026, in Claude Code) — v3.8
+- **Race condition fix**: `subscribeToPush()` checkte `if (!swReg) return null` — als gebruiker snel klikt is SW nog niet geregistreerd; fix: `swReady` Promise, `await swReady` voor subscribe
+- **`update` → `upsert`**: `savePushSubscription()` gebruikte `.update()` dat niets doet als rij niet bestaat; fix: `.upsert()` met alle settings-velden
+- **24 debug-log statements**: `[SW]` en `[Push]` tags voor elke stap, inclusief scope, endpoint, Supabase-foutcodes en ontbrekende kolom-detectie
+- Versie: v3.8
+
+### Sessie 4 (14 mei 2026, in Claude Code) — Edge Function timezone fix (geen versie-bump)
+- **Hoofdoorzaak**: `now.getHours()` in Deno Edge Function = UTC uur; `reminder_time` in DB is Amsterdam-tijd (CEST = UTC+2); verschil was altijd −120 of meer → altijd overgeslagen
+- **Fix**: `amsterdamNow()` via `Intl.DateTimeFormat('Europe/Amsterdam')`; `amsterdamDateStr()` voor datumvergelijking
+- **Absolute diff**: `Math.min(rawDiff, 1440 - rawDiff)` vervangt gebroken `diffMin < 0 || diffMin > 5`
+- **Venster**: ±5 → ±10 minuten om cron-jitter op te vangen
+- **Logging**: response bevat per-user: reminder-tijd, huidige Amsterdam-tijd, verschil, voortgang, beslissing
+- Gedeployed via Supabase CLI; getest: functie vindt user, logt correct, skip-reden zichtbaar
+
 ---
 
 ## Bestandsstructuur
 
 ```
 polski-leraar/
-├── index.html              # Hele app (~1130 regels, ~89KB)
+├── index.html              # Hele app (~1300 regels, ~100KB)
 │   ├── <style>             # ~90 regels CSS (dark theme, components)
-│   ├── HTML                # ~230 regels (7 screens: auth, home, session, result, progress, words, settings)
-│   └── <script>            # ~800 regels JavaScript
+│   ├── HTML                # ~240 regels (7 screens: auth, home, session, result, progress, words, settings)
+│   └── <script>            # ~950 regels JavaScript
 │       ├── WORD_DB         # 103 woorden (50 basis A0 + 53 pool A0/A1/A2/B1)
 │       ├── LEVEL engine    # A0→B1 berekening + getNextWords()
 │       ├── SRS engine      # Leitner-systeem met promotie-gating
@@ -228,9 +275,14 @@ polski-leraar/
 │       ├── Words           # renderWords()
 │       ├── Settings        # renderSettings(), saveSettings(), toggleSetting()
 │       ├── Export          # exportData(), importData()
-│       ├── Reminders       # toggleReminder(), scheduleReminder()
-│       └── Utils           # levenshtein(), shuffle(), dateStr()
+│       ├── Web Push        # VAPID, initServiceWorker, subscribeToPush, savePushSubscription
+│       ├── Reminders       # toggleReminder(), scheduleReminder(), updateReminderStatus()
+│       └── Utils           # speak(), speakCurrentCard(), levenshtein(), shuffle(), dateStr()
+├── sw.js                   # Service Worker — push events + notificationclick handler
 ├── schema.sql              # Supabase tabel-definities (eenmalig uitgevoerd)
+├── schema-push.sql         # push_subscription kolom + pg_cron job (eenmalig)
+├── supabase/
+│   └── functions/send-reminders/index.ts  # Edge Function — hourly push sender
 ├── CLAUDE-CODE-BRIEFING.md # Dit document
 └── TECHNISCH-HANDBOEK.md   # Beheerdershandboek voor Johan
 ```
