@@ -319,7 +319,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.7</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.8</div>
 </div>
 
 <script>
@@ -1020,6 +1020,7 @@ function importData(event) {
 // ── Web Push / Service Worker ──────────────────────────────────────────────
 var VAPID_PUBLIC_KEY = 'BG0iXJDMVgWHil-kLlKsgcAyS3BT05t6crFWiyggWrmX_76en7fiBITU8xeEQYwhdRMJ4MdpBps0HNAmegZK67I';
 var swReg = null;
+var swReady = null; // Promise — resolvet als SW geregistreerd is
 
 function urlBase64ToUint8Array(base64String) {
   var padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -1031,34 +1032,94 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 function initServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('/polski-leraar/sw.js').then(function(reg) {
-    swReg = reg;
-    // Als reminder al aanstond: herverbind de subscription
-    if (settings.reminderEnabled) updateReminderStatus();
-  }).catch(function(e) { console.warn('SW registratie mislukt:', e.message); });
+  if (!('serviceWorker' in navigator)) {
+    console.log('[SW] Service Workers worden niet ondersteund door deze browser');
+    return;
+  }
+  console.log('[SW] Registratie starten: /polski-leraar/sw.js');
+  swReady = navigator.serviceWorker.register('/polski-leraar/sw.js')
+    .then(function(reg) {
+      swReg = reg;
+      console.log('[SW] ✅ Geregistreerd — scope:', reg.scope, '| state:', reg.active ? reg.active.state : 'installing');
+      if (settings.reminderEnabled) updateReminderStatus();
+    })
+    .catch(function(e) {
+      console.error('[SW] ❌ Registratie mislukt:', e.name, '—', e.message);
+      console.error('[SW] Controleer of sw.js bereikbaar is op https://johanvanthul.github.io/polski-leraar/sw.js');
+    });
 }
 
 async function subscribeToPush() {
-  if (!swReg) return null;
+  console.log('[Push] subscribeToPush() aangeroepen');
+  if (!('PushManager' in window)) {
+    console.warn('[Push] PushManager niet beschikbaar — iOS 16.4+ vereist, app moet op beginscherm staan');
+    return null;
+  }
+  // FIX: wacht op SW registratie i.p.v. direct null returnen als swReg nog niet klaar is
+  if (swReady) {
+    console.log('[Push] Wachten op SW registratie...');
+    await swReady;
+  }
+  if (!swReg) {
+    console.error('[Push] swReg is null na wachten — SW registratie is mislukt');
+    return null;
+  }
+  console.log('[Push] SW klaar, pushManager opvragen...');
   try {
     var existing = await swReg.pushManager.getSubscription();
-    if (existing) return existing;
-    return await swReg.pushManager.subscribe({
+    if (existing) {
+      console.log('[Push] Bestaande subscription gevonden:', existing.endpoint.slice(0, 60) + '...');
+      return existing;
+    }
+    console.log('[Push] Nieuw abonnement aanmaken met VAPID key...');
+    var sub = await swReg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
+    console.log('[Push] ✅ Subscription aangemaakt:', sub.endpoint.slice(0, 60) + '...');
+    return sub;
   } catch(e) {
-    console.warn('Push subscribe mislukt:', e.message);
+    console.error('[Push] ❌ Subscribe mislukt:', e.name, '—', e.message);
+    if (e.name === 'NotAllowedError') console.error('[Push] Notificatie-toestemming geweigerd');
+    if (e.name === 'AbortError') console.error('[Push] Mogelijk verkeerde VAPID key of netwerk probleem');
     return null;
   }
 }
 
 async function savePushSubscription(sub) {
-  if (!sb || !sbUser || !sub) return;
-  await sb.from('user_settings').update({
-    push_subscription: JSON.stringify(sub)
-  }).eq('user_id', sbUser.id);
+  console.log('[Push] savePushSubscription() aangeroepen, sub:', sub ? 'aanwezig' : 'NULL');
+  if (!sub) {
+    console.error('[Push] Geen subscription om op te slaan — abonnement is mislukt');
+    return;
+  }
+  if (!sb || !sbUser) {
+    console.warn('[Push] Niet ingelogd in Supabase — subscription wordt niet in cloud opgeslagen');
+    console.warn('[Push] Log in via Instellingen → Account & Sync om reminders te activeren');
+    return;
+  }
+  var subJson = JSON.stringify(sub);
+  console.log('[Push] Opslaan in Supabase voor user:', sbUser.id.slice(0, 8) + '...');
+  // FIX: upsert i.p.v. update — update doet niets als de rij niet bestaat
+  var { error } = await sb.from('user_settings').upsert({
+    user_id:          sbUser.id,
+    daily_goal:       settings.dailyGoal,
+    session_size:     settings.sessionSize,
+    direction:        settings.direction,
+    retry_wrong:      settings.retryWrong,
+    show_grammar:     settings.showGrammar,
+    show_examples:    settings.showExamples,
+    reminder_enabled: settings.reminderEnabled,
+    reminder_time:    settings.reminderTime,
+    push_subscription: subJson,
+  }, { onConflict: 'user_id' });
+  if (error) {
+    console.error('[Push] ❌ Supabase upsert mislukt:', error.code, '—', error.message);
+    if (error.message && error.message.includes('push_subscription')) {
+      console.error('[Push] Kolom push_subscription bestaat niet — voer schema-push.sql uit in Supabase SQL Editor');
+    }
+  } else {
+    console.log('[Push] ✅ Subscription opgeslagen in Supabase');
+  }
 }
 
 // ── Reminders ──────────────────────────────────────────────────────────────
