@@ -1280,6 +1280,12 @@ async function sbSyncDown() {
           todayCorrect:sRow.today_correct, lastSessionDate:sbLastSession,
           sessionsCompleted:sRow.sessions_completed, todayDate:sRow.today_date,
           wordsLearned:sRow.words_learned||0 };
+        // Dagelijkse reset: Supabase-data kan verouderd zijn na middernacht
+        var todayCheck = dateStr();
+        if (stats.todayDate !== todayCheck) {
+          stats.todayReviews = 0; stats.todayCorrect = 0; stats.todayDate = todayCheck;
+          sbSyncUp();
+        }
       } else {
         // Lokale data is nieuwer — herstel Supabase op de achtergrond
         sbSyncUp();
