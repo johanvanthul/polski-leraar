@@ -1274,7 +1274,9 @@ async function sbSyncDown() {
       var sbLastSession = parseInt(sRow.last_session_date) || 0;
       var localLastSession = stats.lastSessionDate || 0;
       if (sbLastSession >= localLastSession) {
-        // Supabase is nieuwer of gelijk — gebruik Supabase
+        // Supabase is nieuwer of gelijk — gebruik Supabase,
+        // maar bewaar lokale todayReviews als die hoger is (niet-voltooide sessie)
+        var localTodayReviews = stats.todayReviews || 0;
         stats = { streak:sRow.streak, bestStreak:sRow.best_streak,
           totalReviews:sRow.total_reviews, todayReviews:sRow.today_reviews,
           todayCorrect:sRow.today_correct, lastSessionDate:sbLastSession,
@@ -1284,6 +1286,10 @@ async function sbSyncDown() {
         var todayCheck = dateStr();
         if (stats.todayDate !== todayCheck) {
           stats.todayReviews = 0; stats.todayCorrect = 0; stats.todayDate = todayCheck;
+          sbSyncUp();
+        } else if (localTodayReviews > stats.todayReviews) {
+          // Lokaal meer reviews gedaan dan server weet (bijv. niet-voltooide sessie)
+          stats.todayReviews = localTodayReviews;
           sbSyncUp();
         }
       } else {
