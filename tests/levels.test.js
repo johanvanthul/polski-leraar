@@ -89,12 +89,12 @@ test('hoog foutpercentage blokkeert A1 ondanks genoeg woorden', function() {
   assertEqual(computeLevel(cards), 'A0');
 });
 
-test('hoog foutpercentage blokkeert A2 ondanks genoeg woorden', function() {
-  // 25 woorden maar 45% fout → boven A2-drempel van 40%
-  var cards = makeCards(25, { box: 3, reviews: 5, misses: 2.25 }); // ~45%
-  // Afronden: 2 misses per 5 reviews = 40% → precies op de grens
-  var cards2 = makeCards(25, { box: 3, reviews: 5, misses: 3 }); // 60% fout
-  assertEqual(computeLevel(cards2), 'A1'); // wél A1 (≤55%), niet A2
+test('hoog foutpercentage blokkeert A2 maar niet A1', function() {
+  // 25 woorden, 10 reviews, 5 fouten = 50% foutrate
+  // 50% > 40% → A2 geblokkeerd
+  // 50% ≤ 55% → A1 wél bereikt
+  var cards = makeCards(25, { box: 3, reviews: 10, misses: 5 });
+  assertEqual(computeLevel(cards), 'A1');
 });
 
 test('lage gemiddelde box blokkeert A2 ondanks genoeg woorden', function() {
