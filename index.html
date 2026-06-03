@@ -163,9 +163,13 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <span style="font-size:20px">🎧</span>
       <div><div style="font-size:16px;font-weight:700">Luisteren</div><div style="font-size:12px;opacity:.8">~10 woorden · hoor & vertaal</div></div>
     </button>
+    <button id="btn-sentence" class="big-btn" onclick="startSession('sentence')" style="background:linear-gradient(135deg,#2EAD6D,#1A8552)">
+      <span style="font-size:20px">💬</span>
+      <div><div style="font-size:16px;font-weight:700">Zinnen</div><div style="font-size:12px;opacity:.8">~10 zinnen · type in het Pools</div></div>
+    </button>
   </div>
   <div style="margin-top:24px;padding:16px 18px;background:var(--surface);border-radius:14px;border:1px solid var(--border);font-size:13px;color:var(--text-muted);line-height:1.6">
-    💡 <strong style="color:var(--text)">Tip:</strong> Mix de modi. Flashcards voor herkenning, typen voor actief gebruik, luisteren voor uitspraak en begrip.
+    💡 <strong style="color:var(--text)">Tip:</strong> Mix de modi. Flashcards voor herkenning, typen voor actief gebruik, luisteren voor uitspraak, zinnen voor echte gesprekken.
   </div>
 </div>
 
@@ -455,7 +459,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.2</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.3</div>
 </div>
 
 <script>
@@ -577,6 +581,25 @@ const WORD_DB = [
   {id:236,pl:"przyznać się",nl:"toegeven",cat:"meningen",ex_pl:"Muszę się przyznać — nie rozumiem",ex_nl:"Ik moet toegeven — ik begrijp het niet",diff:3,gram:"'Się' maakt het wederkerend. 'Przyznać się do czegoś' = iets erkennen/bekennen.",pool:true,level:'B1'},
   {id:237,pl:"wymagać",nl:"vereisen",cat:"dagelijks",ex_pl:"Nauka języka wymaga cierpliwości",ex_nl:"Taalleren vereist geduld",diff:3,gram:"'Wymagać' + 2e naamval: wymaga cierpliwości (geduld), czasu (tijd), wysiłku (inspanning).",pool:true,level:'B1'},
   {id:238,pl:"nawiązywać kontakt",nl:"contact leggen",cat:"familie",ex_pl:"Chcę nawiązać kontakt z polską rodziną",ex_nl:"Ik wil contact leggen met de Poolse familie",diff:3,gram:"'Z' + instrumentalis: z rodziną. 'Nawiązać' = eenmalig contact leggen.",pool:true,level:'B1'},
+  // ── Zinnen (type: sentence) ───────────────────────────────────────────────
+  {id:3001,pl:"Nie rozumiem, co mówisz.",nl:"Ik begrijp niet wat je zegt.",cat:"dagelijks",ex_pl:"Przepraszam, nie rozumiem, co mówisz.",ex_nl:"Sorry, ik begrijp niet wat je zegt.",diff:1,gram:"'Nie rozumiem' + 'co' (wat) + werkwoord. Meest gebruikte zin om te bekennen dat je iets niet snapt.",pool:true,level:'A1',type:'sentence'},
+  {id:3002,pl:"Czy możesz mówić wolniej?",nl:"Kun je langzamer praten?",cat:"dagelijks",ex_pl:"Przepraszam, czy możesz mówić wolniej?",ex_nl:"Sorry, kun je wat langzamer praten?",diff:1,gram:"'Czy możesz' = kun je (beleefde vraag). 'Wolniej' = langzamer (vergrotende trap van 'wolno').",pool:true,level:'A1',type:'sentence'},
+  {id:3003,pl:"Dziękuję za zaproszenie.",nl:"Bedankt voor de uitnodiging.",cat:"familie",ex_pl:"Bardzo dziękuję za zaproszenie.",ex_nl:"Heel erg bedankt voor de uitnodiging.",diff:1,gram:"'Za' + 4e naamval: za zaproszenie (uitnodiging), za pomoc (hulp), za wszystko (alles).",pool:true,level:'A1',type:'sentence'},
+  {id:3004,pl:"Bardzo mi się tu podoba.",nl:"Ik vind het hier erg leuk.",cat:"familie",ex_pl:"Muszę powiedzieć, że bardzo mi się tu podoba.",ex_nl:"Ik moet zeggen dat ik het hier erg leuk vind.",diff:2,gram:"Omgekeerde constructie: 'podoba MI się' = het bevalt MIJ. 'Tu' = hier.",pool:true,level:'A2',type:'sentence'},
+  {id:3005,pl:"Kiedy przyjedziecie do nas?",nl:"Wanneer komen jullie bij ons?",cat:"familie",ex_pl:"Kiedy przyjedziecie do nas w odwiedziny?",ex_nl:"Wanneer komen jullie bij ons op bezoek?",diff:2,gram:"'Przyjedziecie' = jullie komen (met vervoer, toekomst). 'Do nas' = bij ons. 'W odwiedziny' = op bezoek.",pool:true,level:'A2',type:'sentence'},
+  {id:3006,pl:"Jak długo tu zostaniecie?",nl:"Hoe lang blijven jullie hier?",cat:"familie",ex_pl:"Jak długo tym razem zostaniecie?",ex_nl:"Hoe lang blijven jullie dit keer?",diff:2,gram:"'Jak długo' = hoe lang. 'Zostaniecie' = jullie blijven (toekomst, meervoud). 'Tym razem' = dit keer.",pool:true,level:'A2',type:'sentence'},
+  {id:3007,pl:"To jest dla mnie za trudne.",nl:"Dit is te moeilijk voor mij.",cat:"meningen",ex_pl:"Ta gramatyka jest dla mnie za trudna.",ex_nl:"Deze grammatica is te moeilijk voor mij.",diff:2,gram:"'Za' + bijvoeglijk naamwoord = te...: za trudne (te moeilijk), za szybko (te snel).",pool:true,level:'A2',type:'sentence'},
+  {id:3008,pl:"Próbuję się nauczyć polskiego.",nl:"Ik probeer Pools te leren.",cat:"dagelijks",ex_pl:"Próbuję się nauczyć polskiego dla rodziny.",ex_nl:"Ik probeer Pools te leren voor de familie.",diff:2,gram:"'Próbuję się nauczyć' = ik probeer te leren. 'Polskiego' = 2e naamval van 'polski'.",pool:true,level:'A2',type:'sentence'},
+  // ── Patronen (type: pattern) ──────────────────────────────────────────────
+  {id:4001,pl:"Myślę, że ...",nl:"Ik denk dat ...",cat:"meningen",ex_pl:"Myślę, że to dobry pomysł.",ex_nl:"Ik denk dat dat een goed idee is.",diff:1,gram:"'Myślę, że' + bijzin — hét patroon om je mening te geven. Zeg dit en vul aan!",pool:true,level:'A1',type:'pattern'},
+  {id:4002,pl:"Nie wiem, czy ...",nl:"Ik weet niet of ...",cat:"meningen",ex_pl:"Nie wiem, czy zdążę na czas.",ex_nl:"Ik weet niet of ik op tijd kom.",diff:1,gram:"'Czy' na 'nie wiem' = of. Hetzelfde 'czy' als in ja/nee-vragen. Handig om onzekerheid uit te drukken.",pool:true,level:'A1',type:'pattern'},
+  {id:4003,pl:"Czy możesz mi ... ?",nl:"Kun je me ... ?",cat:"dagelijks",ex_pl:"Czy możesz mi to wyjaśnić?",ex_nl:"Kun je me dat uitleggen?",diff:2,gram:"'Mi' = me/mij (kort). Na 'możesz' volgt een heel werkwoord: wyjaśnić, pomóc, powiedzieć.",pool:true,level:'A1',type:'pattern'},
+  {id:4004,pl:"Chciałbym / Chciałabym ...",nl:"Ik zou willen ...",cat:"meningen",ex_pl:"Chciałbym się lepiej nauczyć polskiego.",ex_nl:"Ik zou beter Pools willen leren.",diff:2,gram:"Man: Chciałbym. Vrouw: Chciałabym. Beleefd verzoek of wens. + heel werkwoord.",pool:true,level:'A2',type:'pattern'},
+  // ── Frasen (type: phrase) ─────────────────────────────────────────────────
+  {id:5001,pl:"Miłego dnia!",nl:"Fijne dag!",cat:"dagelijks",ex_pl:"Do zobaczenia i miłego dnia!",ex_nl:"Tot ziens en een fijne dag!",diff:1,gram:"'Miłego' = 2e naamval van 'miły' (fijn). Poolse begroetingswensen staan altijd in de 2e naamval.",pool:true,level:'A0',type:'phrase'},
+  {id:5002,pl:"Do zobaczenia!",nl:"Tot ziens!",cat:"dagelijks",ex_pl:"Pa! Do zobaczenia jutro.",ex_nl:"Dag! Tot ziens morgen.",diff:1,gram:"Letterlijk: 'tot het zien'. 'Zobaczyć' = zien. Standaard afscheid op alle formele en informele niveaus.",pool:true,level:'A0',type:'phrase'},
+  {id:5003,pl:"Na zdrowie!",nl:"Op je gezondheid! / Proost!",cat:"eten",ex_pl:"Wznieśmy toast! Na zdrowie!",ex_nl:"Laten we proosten! Op je gezondheid!",diff:1,gram:"Letterlijk: 'voor de gezondheid'. Gebruikt als proost én als reactie op niezen.",pool:true,level:'A0',type:'phrase'},
+  {id:5004,pl:"Wszystkiego najlepszego!",nl:"Van harte gefeliciteerd!",cat:"familie",ex_pl:"Wszystkiego najlepszego z okazji urodzin!",ex_nl:"Van harte gefeliciteerd met je verjaardag!",diff:1,gram:"Letterlijk: 'het allerbeste'. 'Najlepszego' = 2e naamval van 'najlepszy' (het beste).",pool:true,level:'A0',type:'phrase'},
 ];
 
 // ═══════════════════════════════════════
@@ -778,24 +801,29 @@ function renderHome() {
   if (due > 0) { dueEl.style.display = 'flex'; document.getElementById('due-count').textContent = due; }
   else { dueEl.style.display = 'none'; }
 
-  const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type'), bl = document.getElementById('btn-listen');
+  const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type'), bl = document.getElementById('btn-listen'), bs = document.getElementById('btn-sentence');
   var sz = settings.sessionSize || 10;
   if (reached) {
     bf.style.background = bt.style.background = bl.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
+    if (bs) bs.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
     bf.querySelector('div div:first-child').textContent = 'Bonus Flashcards';
     bt.querySelector('div div:first-child').textContent = 'Bonus Typen';
     bl.querySelector('div div:first-child').textContent = 'Bonus Luisteren';
+    if (bs) bs.querySelector('div div:first-child').textContent = 'Bonus Zinnen';
   } else {
     bf.style.background = 'linear-gradient(135deg,var(--accent),#D4543E)';
     bt.style.background = 'linear-gradient(135deg,var(--purple),#6247E5)';
     bl.style.background = 'linear-gradient(135deg,var(--blue),#3A7BC8)';
+    if (bs) bs.style.background = 'linear-gradient(135deg,#2EAD6D,#1A8552)';
     bf.querySelector('div div:first-child').textContent = 'Flashcards';
     bt.querySelector('div div:first-child').textContent = 'Typ het antwoord';
     bl.querySelector('div div:first-child').textContent = 'Luisteren';
+    if (bs) bs.querySelector('div div:first-child').textContent = 'Zinnen';
   }
   bf.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · herken & flip';
   bt.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · actiever leren';
   bl.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · hoor & vertaal';
+  if (bs) bs.querySelector('div div:last-child').textContent = '~' + sz + ' zinnen · typ in het Pools';
   renderCatPills('home-cats', selectedCat, function(c) { selectedCat = c; renderHome(); });
 }
 
@@ -825,7 +853,7 @@ function startSession(mode) {
     }
   }
   var sel = buildSessionCards(mode);
-  var dir = mode === 'listen' ? 'pl-nl' : mode === 'type' ? 'nl-pl' : getDir();
+  var dir = mode === 'listen' ? 'pl-nl' : (mode === 'type' || mode === 'sentence') ? 'nl-pl' : getDir();
   sess = {cards:sel, idx:0, mode:mode, dir:dir, showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
   showScreen('session'); renderSessionCard();
 }
@@ -848,10 +876,28 @@ function buildSessionCards(mode) {
   var sz  = settings.sessionSize || 10;
 
   var allActive = cards.filter(function(c){
-    return isCardActive(c) &&
-           (selectedCat === 'all' || c.cat === selectedCat) &&
-           (mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1);
+    if (!isCardActive(c)) return false;
+    if (selectedCat !== 'all' && c.cat !== selectedCat) return false;
+    if (mode === 'type' && ((c.modeStats||{}).flashcard||0) < 1) return false;
+    // Zinnenmodus: gebruik alleen sentences/patterns/phrases + gewone woorden als aanvulling
+    if (mode === 'sentence') return true;
+    return true;
   });
+
+  // Zinnenmodus: zinnen/patronen/frasen prioriteit, gewone woorden als aanvulling
+  if (mode === 'sentence') {
+    var sentencePool = allActive.filter(function(c){ var t=getCardType(c); return t==='sentence'||t==='pattern'||t==='phrase'; });
+    var wordPool     = allActive.filter(function(c){ return getCardType(c)==='word'; });
+    var allSorted    = sentencePool.concat(wordPool).sort(function(a,b){
+      return personalDiff(b)-personalDiff(a) || (b.misses||0)-(a.misses||0) || a.box-b.box;
+    });
+    var sel2 = [], seen2 = new Set();
+    for (var i=0; i<allSorted.length && sel2.length<sz; i++) {
+      if (!seen2.has(allSorted[i].id)) { seen2.add(allSorted[i].id); sel2.push(allSorted[i]); }
+    }
+    shuffle(sel2);
+    return sel2;
+  }
 
   var dueWords = allActive.filter(function(c){ return SRS.getNextReview(c) <= now; })
     .sort(function(a,b){
@@ -941,7 +987,11 @@ function renderSessionCard() {
     document.getElementById('sess-direction').innerHTML = '<span style="font-size:11px;color:var(--text-muted);background:var(--surface);padding:4px 12px;border-radius:20px;font-weight:500">🎧 Hoor & vertaal</span>';
     document.getElementById('sess-question').innerHTML = '<button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.12);border:2px solid rgba(74,144,217,.25);color:var(--blue);border-radius:20px;padding:20px 36px;font-size:52px;cursor:pointer">🔊</button>';
   } else {
-    document.getElementById('sess-question').textContent = sess.dir==='pl-nl' ? c.pl : c.nl;
+    var qText = sess.dir==='pl-nl' ? c.pl : c.nl;
+    var qEl = document.getElementById('sess-question');
+    qEl.textContent = qText;
+    qEl.style.fontSize = qText.length > 60 ? '18px' : qText.length > 35 ? '22px' : '32px';
+    qEl.style.lineHeight = qText.length > 35 ? '1.4' : '1.2';
   }
   document.getElementById('sess-tap-hint').style.display = sess.mode==='flashcard' ? 'block' : 'none';
 
@@ -957,9 +1007,11 @@ function renderSessionCard() {
   sess.showAnswer = false;
 
   var ta = document.getElementById('sess-type-area');
-  if (sess.mode === 'type' || isListen) {
+  var isSentenceMode = sess.mode === 'sentence';
+  if (sess.mode === 'type' || isListen || isSentenceMode) {
+    var plHolder = isListen ? 'Typ in het Nederlands...' : isSentenceMode ? 'Typ de Poolse zin...' : 'Typ in het Pools...';
     ta.style.display = 'block';
-    ta.innerHTML = '<div style="display:flex;gap:8px"><input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+(isListen?'Typ in het Nederlands...':'Wpisz po polsku...')+'" style="flex:1;padding:14px 18px;border-radius:14px;background:var(--surface);border:2px solid var(--border);color:var(--text);font-size:16px"><button onclick="submitTyped()" style="padding:14px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button></div><button onclick="skipTyped()" style="margin-top:10px;width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px">Weet ik niet — toon antwoord</button>';
+    ta.innerHTML = '<div style="display:flex;gap:8px"><input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+plHolder+'" style="flex:1;padding:14px 18px;border-radius:14px;background:var(--surface);border:2px solid var(--border);color:var(--text);font-size:16px"><button onclick="submitTyped()" style="padding:14px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button></div><button onclick="skipTyped()" style="margin-top:10px;width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px">Weet ik niet — toon antwoord</button>';
     setTimeout(function(){ var inp = document.getElementById('type-input'); if(inp) { inp.focus(); inp.onkeydown = function(e){ if(e.key==='Enter'&&inp.value.trim()) submitTyped(); }; } }, 100);
   } else { ta.style.display = 'none'; ta.innerHTML = ''; }
 
@@ -1008,21 +1060,32 @@ function submitTyped() {
   var inp = document.getElementById('type-input'); if (!inp || !inp.value.trim()) return;
   var c = sess.cards[sess.idx], answer = sess.dir === 'pl-nl' ? c.nl : c.pl;
   var typed = inp.value.trim();
-  var input = typed.toLowerCase(), target = answer.toLowerCase().split('/')[0].trim();
-  var exact = target === input;
-  var fuzzy = !exact && levenshtein(target, input) <= Math.max(1, Math.floor(target.length * .2));
+  var normInput  = normalizeAnswer(typed);
+  var normTarget = normalizeAnswer(answer.split('/')[0].trim());
+  var exact = normTarget === normInput;
+  var threshold = Math.max(1, Math.floor(normTarget.length * .2));
+  var fuzzy = !exact && levenshtein(normTarget, normInput) <= threshold;
   var correct = exact || fuzzy;
-  showTypedResult(correct, answer, c, exact ? null : typed);
+  // Diacritics-hint: bijna goed op accenten na
+  var hint = null;
+  if (!correct && sess.dir === 'nl-pl') {
+    var stripped = stripPolishDiacritics(normTarget);
+    if (levenshtein(stripped, normInput) <= Math.max(1, Math.floor(normTarget.length * .1))) {
+      hint = 'Let op Poolse tekens! (ą ć ę ł ń ó ś ź ż)';
+    }
+  }
+  showTypedResult(correct, answer, c, exact ? null : typed, hint);
 }
-function skipTyped() { var c = sess.cards[sess.idx]; showTypedResult(false, sess.dir==='pl-nl'?c.nl:c.pl, c, null); }
+function skipTyped() { var c = sess.cards[sess.idx]; showTypedResult(false, sess.dir==='pl-nl'?c.nl:c.pl, c, null, null); }
 
-function showTypedResult(correct, answer, c, typedInput) {
+function showTypedResult(correct, answer, c, typedInput, hint) {
   var isFuzzy = correct && typedInput;
   var label = isFuzzy ? '≈ Bijna!' : correct ? '✓ Goed!' : '✗ Niet goed';
   var color = isFuzzy ? 'var(--yellow)' : correct ? 'var(--green)' : 'var(--red)';
   var safePl = c.pl.replace(/'/g, "\\'");
   var speakBtn = '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:8px;padding:4px 10px;font-size:14px;cursor:pointer;margin-left:6px">🔊</button>';
   var html = '<div style="font-size:20px;font-weight:700;color:'+color+'">'+label+'</div>';
+  if (hint && !correct) html += '<div style="font-size:12px;color:var(--yellow);margin-top:6px;padding:6px 10px;border-radius:8px;background:rgba(230,168,23,.1)">💡 '+hint+'</div>';
   if (typedInput) {
     // Toon verschil: wat getypt vs wat goed is, met 🔊 bij het goede (Poolse) antwoord
     html += '<div style="margin-top:12px;background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left">';
@@ -1252,12 +1315,14 @@ function renderWords() {
     var mis = c.misses||0, barColor = mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--green)', cat=CATEGORIES[c.cat]||{}, needed=SRS.requiredStreak(mis);
     var pd = personalDiff(c), pdColor = c.reviews===0?'var(--text-dim)':pd<0.2?'var(--green)':pd<0.5?'var(--yellow)':'var(--red)';
     var pdDot = '<div style="width:8px;height:8px;border-radius:50%;background:'+pdColor+';flex-shrink:0" title="Persoonlijke moeilijkheid"></div>';
+    var cardType = getCardType(c);
+    var typeBadge = cardType!=='word' ? '<span class="badge" style="background:rgba(46,173,109,.12);color:var(--green)">'+({phrase:'frase',sentence:'zin',pattern:'patroon'}[cardType]||cardType)+'</span>' : '';
     var bars = [0,1,2,3,4,5,6].map(function(b){return '<div style="width:4px;height:12px;border-radius:2px;background:'+(b<=c.box?barColor:'var(--text-dim)')+'"></div>';}).join('');
     var badge = mis>0 ? '<span class="badge" style="background:'+(mis>3?'var(--red-soft)':mis>1?'rgba(230,168,23,.13)':'rgba(72,79,88,.2)')+';color:'+(mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--text-muted)')+'">'+mis+'× fout</span>' : '';
     var fc=(c.modeStats||{}).flashcard||0, tc=(c.modeStats||{}).type||0;
     var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.13);font-size:11px;color:var(--purple)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--purple)':'rgba(123,97,255,.2)')+'"></div>';}).join('')+'</div></div>' : '';
     var safePl = c.pl.replace(/'/g,"\\'");
-    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
+    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+typeBadge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
   }).join('');
 }
 
@@ -1727,6 +1792,23 @@ function speak(text, lang) {
 function speakCurrentCard() {
   var c = sess.cards[sess.idx]; if (!c) return;
   speak(c.pl); // altijd Pools — luisterknop speelt nooit Nederlands
+}
+
+function normalizeAnswer(s) {
+  return (s||'').toLowerCase().trim()
+    .replace(/[.,!?;:"""„]/g, '').replace(/\s+/g, ' ');
+}
+
+function stripPolishDiacritics(s) {
+  return s.replace(/ą/g,'a').replace(/ć/g,'c').replace(/ę/g,'e').replace(/ł/g,'l')
+          .replace(/ń/g,'n').replace(/ó/g,'o').replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z');
+}
+
+function getCardType(c) {
+  var cw = customWords.find(function(w){ return w.id === c.id; });
+  if (cw) return cw.type || 'word';
+  var db = WORD_DB.find(function(w){ return w.id === c.id; });
+  return (db && db.type) || 'word';
 }
 
 function levenshtein(a, b) {
