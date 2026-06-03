@@ -1432,7 +1432,16 @@ async function sbSyncDown() {
 
 async function sbSyncUp() {
   if (!sb || !sbUser) return;
+  // Directe offline-check: niet eens proberen als browser weet dat we offline zijn
+  if (!navigator.onLine) { setSyncStatus('pending'); return; }
   setSyncStatus('syncing');
+
+  // Timeout: requests blijven anders hangen in vliegtuigmodus
+  var done = false;
+  var timer = setTimeout(function() {
+    if (!done) { done = true; setSyncStatus('failed'); }
+  }, 8000);
+
   try {
     var cardRows = cards.map(function(c) {
       return { user_id:sbUser.id, word_id:c.id, box:c.box, last_review:c.lastReview,
@@ -1440,8 +1449,6 @@ async function sbSyncUp() {
         mode_flashcard:(c.modeStats||{}).flashcard||0, mode_type:(c.modeStats||{}).type||0,
         added_at:c.added||Date.now() };
     });
-    // Supabase gooit geen exception bij netwerkfouten — fout zit in { error }
-    // Daarom controleren we elk resultaat expliciet
     if (cardRows.length) {
       var r1 = await sb.from('user_cards').upsert(cardRows, {onConflict:'user_id,word_id'});
       if (r1.error) throw r1.error;
@@ -1462,10 +1469,10 @@ async function sbSyncUp() {
       reminder_enabled:settings.reminderEnabled, reminder_time:settings.reminderTime,
     }, {onConflict:'user_id'});
     if (r3.error) throw r3.error;
-    setSyncStatus('success');
+    if (!done) { done = true; clearTimeout(timer); setSyncStatus('success'); }
   } catch(e) {
-    setSyncStatus('failed');
-    console.warn('syncUp mislukt (offline?):', e.message);
+    if (!done) { done = true; clearTimeout(timer); setSyncStatus('failed'); }
+    console.warn('syncUp mislukt:', e.message);
   }
 }
 
