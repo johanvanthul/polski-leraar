@@ -1440,21 +1440,28 @@ async function sbSyncUp() {
         mode_flashcard:(c.modeStats||{}).flashcard||0, mode_type:(c.modeStats||{}).type||0,
         added_at:c.added||Date.now() };
     });
-    if (cardRows.length) await sb.from('user_cards').upsert(cardRows, {onConflict:'user_id,word_id'});
-    await sb.from('user_stats').upsert({
+    // Supabase gooit geen exception bij netwerkfouten — fout zit in { error }
+    // Daarom controleren we elk resultaat expliciet
+    if (cardRows.length) {
+      var r1 = await sb.from('user_cards').upsert(cardRows, {onConflict:'user_id,word_id'});
+      if (r1.error) throw r1.error;
+    }
+    var r2 = await sb.from('user_stats').upsert({
       user_id:sbUser.id, streak:stats.streak, best_streak:stats.bestStreak,
       total_reviews:stats.totalReviews, today_reviews:stats.todayReviews,
       today_correct:stats.todayCorrect, last_session_date:stats.lastSessionDate,
       sessions_completed:stats.sessionsCompleted, today_date:stats.todayDate,
       words_learned:stats.wordsLearned||0,
     }, {onConflict:'user_id'});
-    await sb.from('user_settings').upsert({
+    if (r2.error) throw r2.error;
+    var r3 = await sb.from('user_settings').upsert({
       user_id:sbUser.id, daily_goal:settings.dailyGoal, session_size:settings.sessionSize,
       direction:settings.direction, retry_wrong:settings.retryWrong,
       show_grammar:settings.showGrammar, show_examples:settings.showExamples,
       auto_speak:settings.autoSpeak !== undefined ? settings.autoSpeak : true,
       reminder_enabled:settings.reminderEnabled, reminder_time:settings.reminderTime,
     }, {onConflict:'user_id'});
+    if (r3.error) throw r3.error;
     setSyncStatus('success');
   } catch(e) {
     setSyncStatus('failed');
