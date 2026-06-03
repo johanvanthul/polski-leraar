@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polski Leraar — Tests</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #0D1117; color: #E6EDF3; padding: 24px; max-width: 640px; margin: 0 auto; }
+  h1   { font-size: 22px; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #8B949E; margin-bottom: 24px; }
+  .summary { font-size: 16px; font-weight: 700; padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; }
+  .summary.ok   { background: rgba(46,173,109,.15); color: #2EAD6D; }
+  .summary.fail { background: rgba(229,83,75,.15);  color: #E5534B; }
+  .group  { margin-bottom: 20px; }
+  .group-title { font-size: 12px; font-weight: 700; color: #8B949E; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .test   { padding: 8px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 4px; }
+  .pass   { background: rgba(46,173,109,.08); color: #2EAD6D; }
+  .fail   { background: rgba(229,83,75,.08);  color: #E5534B; }
+  .err    { font-size: 11px; opacity: .8; margin-top: 3px; font-family: monospace; }
+</style>
+</head>
+<body>
+<h1>Polski Leraar Tests</h1>
+<div class="subtitle">Open lokaal in browser — geen buildtool nodig</div>
+<div id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ── Test framework ──────────────────────────────────────────────────────────
+var _tests = [];
+var _currentGroup = '';
+
+function group(name) { _currentGroup = name; }
+
+function test(name, fn) {
+  _tests.push({ name: name, group: _currentGroup, fn: fn });
+}
+
+function assert(condition, msg) {
+  if (!condition) throw new Error(msg || 'Assertion failed');
+}
+function assertEqual(a, b, msg) {
+  if (a !== b) throw new Error((msg || 'Niet gelijk') + ': ' + JSON.stringify(a) + ' !== ' + JSON.stringify(b));
+}
+function assertGte(a, b, msg) {
+  if (a < b) throw new Error((msg || '>=') + ': ' + a + ' < ' + b);
+}
+function assertLte(a, b, msg) {
+  if (a > b) throw new Error((msg || '<=') + ': ' + a + ' > ' + b);
+}
+function assertIncludes(arr, val, msg) {
+  if (arr.indexOf(val) === -1) throw new Error((msg || 'Ontbreekt in array') + ': ' + JSON.stringify(val));
+}
+function assertUnique(arr, keyFn) {
+  var seen = new Set();
+  arr.forEach(function(item) {
+    var k = keyFn ? keyFn(item) : item;
+    if (seen.has(k)) throw new Error('Duplicaat gevonden: ' + JSON.stringify(k));
+    seen.add(k);
+  });
+}
+</script>
+
+<script src="srs.test.js"></script>
+<script src="levels.test.js"></script>
+<script src="session-selection.test.js"></script>
+
+<script>
+// ── Resultaten renderen ────────────────────────────────────────────────────
+var pass = 0, fail = 0;
+var groups = {};
+
+_tests.forEach(function(t) {
+  var result = { name: t.name, group: t.group, pass: false, error: null };
+  try { t.fn(); result.pass = true; pass++; }
+  catch(e) { result.error = e.message; fail++; }
+  if (!groups[t.group]) groups[t.group] = [];
+  groups[t.group].push(result);
+});
+
+var summaryEl = document.getElementById('summary');
+summaryEl.className = 'summary ' + (fail === 0 ? 'ok' : 'fail');
+summaryEl.textContent = fail === 0
+  ? '🎉 Alle ' + pass + ' tests geslaagd'
+  : '❌ ' + fail + ' fout · ' + pass + ' geslaagd · ' + (pass + fail) + ' totaal';
+
+var resultsEl = document.getElementById('results');
+Object.keys(groups).forEach(function(groupName) {
+  var div = document.createElement('div');
+  div.className = 'group';
+  div.innerHTML = '<div class="group-title">' + groupName + '</div>';
+  groups[groupName].forEach(function(r) {
+    var el = document.createElement('div');
+    el.className = 'test ' + (r.pass ? 'pass' : 'fail');
+    el.innerHTML = (r.pass ? '✓ ' : '✗ ') + r.name
+      + (r.error ? '<div class="err">' + r.error + '</div>' : '');
+    div.appendChild(el);
+  });
+  resultsEl.appendChild(div);
+});
+</script>
+</body>
+</html>
