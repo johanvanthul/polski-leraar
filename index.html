@@ -426,6 +426,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <div><div class="label">Automatische uitspraak</div><div class="sublabel">Speelt Pools af bij elke kaart</div></div>
       <div id="set-speak" class="toggle on" onclick="toggleSetting(this)"></div>
     </div>
+    <div id="voice-status-row" style="padding:4px 0 8px;font-size:12px;color:var(--text-muted)"></div>
   </div>
   <div class="settings-section">
     <div class="settings-section-title">🔔 Herinneringen</div>
@@ -459,7 +460,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.3</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.4</div>
 </div>
 
 <script>
@@ -1135,6 +1136,7 @@ function finishSession() {
   var levelAfter = LEVEL.compute().code;
   sess.levelUp = levelBefore !== levelAfter ? levelAfter : null;
   save('stats', stats); save('cards', cards);
+  updateDailyHistory();
   sbSyncUp();
   renderResult(); showScreen('result');
 }
@@ -1171,6 +1173,20 @@ function renderResult() {
   var nw = document.getElementById('res-new-words');
   if (sess.newWords.length) { nw.style.display = 'block'; nw.innerHTML = '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">✨ Nieuwe woorden toegevoegd!</div>' + sess.newWords.map(function(w){return '<div style="font-size:13px;margin-top:4px"><strong>'+w.pl+'</strong> — '+w.nl+'</div>';}).join(''); }
   else { nw.style.display = 'none'; }
+  // Moeilijkste woorden uit deze sessie
+  var sessionIds = new Set(sess.cards.map(function(c){return c.id;}));
+  var hardInSession = Array.from(sessionIds).map(function(id){ return cards.find(function(c){return c.id===id;}); })
+    .filter(function(c){ return c && (c.misses||0)>=1 && personalDiff(c)>=0.3; })
+    .sort(function(a,b){ return personalDiff(b)-personalDiff(a); }).slice(0,3);
+  var hwEl = document.getElementById('res-new-words').nextElementSibling;
+  // Voeg moeilijkste woorden toe na dagdoel-sectie indien aanwezig
+  if (hardInSession.length) {
+    var hwHtml = '<div style="background:rgba(229,83,75,.08);border-radius:16px;padding:14px 18px;margin-bottom:16px;border:1px solid rgba(229,83,75,.15)">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">🔁 Opnieuw inplannen</div>'
+      + hardInSession.map(function(c){ return '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">• <strong style="color:var(--text)">'+c.pl+'</strong> — '+c.nl+'</div>'; }).join('')
+      +'</div>';
+    document.getElementById('res-daily').insertAdjacentHTML('beforebegin', hwHtml);
+  }
   var done = stats.todayReviews, goal = settings.dailyGoal, reached = done >= goal;
   document.getElementById('res-daily').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;color:var(--text-muted)">Doel vandaag</span><span style="font-size:12px;font-weight:700;color:'+(reached?'var(--green)':'var(--accent)')+'">'+done+'/'+goal+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+(reached?'var(--green)':'linear-gradient(90deg,var(--accent),var(--yellow))')+';width:'+Math.min(done/goal*100,100)+'%"></div></div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+(reached ? '🎉 Dagelijks doel gehaald!' : 'Nog '+(goal-done)+' woorden te gaan')+'</div>';
   var btn = document.getElementById('res-btn');
@@ -1221,7 +1237,68 @@ function renderProgress() {
   html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:28px"><span>🟢 Geleerd: '+m+'</span><span>🟡 Bezig: '+l+'</span><span>⚫ Nieuw: '+n+'</span></div>';
   html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Per categorie</div>';
   Object.entries(CATEGORIES).forEach(function(e) { var k=e[0], v=e[1], cc=cards.filter(function(c){return c.cat===k;}), cm=cc.filter(function(c){return c.box>=3;}).length; html += '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px">'+v.emoji+' '+v.label+'</span><span style="font-size:12px;color:var(--text-muted)">'+cm+'/'+cc.length+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+v.color+';width:'+(cc.length?cm/cc.length*100:0)+'%"></div></div></div>'; });
-  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px;margin-top:28px">Statistieken</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="stat-box"><div class="val">'+stats.totalReviews+'</div><div class="label">Totaal reviews</div></div><div class="stat-box"><div class="val">'+stats.bestStreak+' 🔥</div><div class="label">Beste streak</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div><div class="stat-box"><div class="val">'+cards.length+'</div><div class="label">Totaal woorden</div></div></div>';
+  // Box-verdeling per doos (0-6)
+  html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px;margin-top:28px">Box-verdeling</div>';
+  html += '<div style="display:flex;gap:4px;align-items:flex-end;height:52px;margin-bottom:4px">';
+  var boxCounts = [0,1,2,3,4,5,6].map(function(b){ return cards.filter(function(c){ return c.box===b; }).length; });
+  var maxBox = Math.max(1, Math.max.apply(null, boxCounts));
+  var boxColors = ['var(--text-dim)','var(--text-dim)','var(--yellow)','var(--yellow)','var(--green)','var(--green)','var(--green)'];
+  boxCounts.forEach(function(cnt, b){
+    var h = Math.max(4, Math.round(cnt/maxBox*48));
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+      +'<div style="font-size:9px;color:var(--text-dim)">'+cnt+'</div>'
+      +'<div style="width:100%;height:'+h+'px;background:'+boxColors[b]+';border-radius:3px 3px 0 0;opacity:'+(cnt?1:.25)+'"></div>'
+      +'</div>';
+  });
+  html += '</div><div style="display:flex;gap:4px;margin-bottom:28px">';
+  [0,1,2,3,4,5,6].forEach(function(b){ html += '<div style="flex:1;text-align:center;font-size:10px;color:var(--text-dim)">'+b+'</div>'; });
+  html += '</div>';
+
+  // Activiteit laatste 7 dagen
+  html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px">Activiteit (7 dagen)</div>';
+  var history = load('daily_history') || {};
+  var last7 = []; for (var i=6;i>=0;i--) { var d=dateStr(Date.now()-i*864e5); last7.push({d:d,r:(history[d]||{}).reviews||0,c:(history[d]||{}).correct||0}); }
+  var maxR = Math.max(1, Math.max.apply(null, last7.map(function(x){return x.r;})));
+  html += '<div style="display:flex;gap:4px;align-items:flex-end;height:52px;margin-bottom:4px">';
+  last7.forEach(function(day){
+    var h = Math.max(day.r?3:0, Math.round(day.r/maxR*48));
+    var acc = day.r ? Math.round(day.c/day.r*100) : 0;
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+      +'<div style="font-size:9px;color:var(--text-dim)">'+(day.r||'')+'</div>'
+      +'<div style="width:100%;height:'+h+'px;background:'+(day.r ? (acc>=70?'var(--green)':'var(--yellow)') : 'var(--text-dim)')+';border-radius:3px 3px 0 0;opacity:'+(day.r?1:.2)+'"></div>'
+      +'</div>';
+  });
+  html += '</div><div style="display:flex;gap:4px;margin-bottom:28px">';
+  last7.forEach(function(day){ html += '<div style="flex:1;text-align:center;font-size:10px;color:var(--text-dim)">'+new Date(day.d).toLocaleDateString('nl-NL',{weekday:'narrow'})+'</div>'; });
+  html += '</div>';
+
+  // Moeilijkste woorden (top 5 op personalDiff)
+  var trouble = cards.filter(function(c){ return c.reviews>=2&&personalDiff(c)>0; })
+    .sort(function(a,b){ return personalDiff(b)-personalDiff(a); }).slice(0,5);
+  if (trouble.length) {
+    html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px">Moeilijkste woorden</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:28px">';
+    trouble.forEach(function(c){
+      var pd = Math.round(personalDiff(c)*100);
+      html += '<div style="background:var(--surface);border-radius:12px;padding:10px 14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:13px;font-weight:600">'+c.pl+'</div><div style="font-size:11px;color:var(--text-muted)">'+c.nl+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:'+(pd>50?'var(--red)':'var(--yellow)')+'">'+pd+'%</div><div style="font-size:10px;color:var(--text-dim)">fout</div></div>'
+        +'</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px">Moeilijkste woorden</div>'
+      +'<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;margin-bottom:28px">🎉 Nog geen probleemwoorden!</div>';
+  }
+
+  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Statistieken</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    +'<div class="stat-box"><div class="val">'+stats.totalReviews+'</div><div class="label">Totaal reviews</div></div>'
+    +'<div class="stat-box"><div class="val">'+stats.bestStreak+' 🔥</div><div class="label">Beste streak</div></div>'
+    +'<div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div>'
+    +'<div class="stat-box"><div class="val">'+cards.length+'</div><div class="label">Totaal woorden</div></div>'
+    +'<div class="stat-box"><div class="val">'+stats.todayReviews+'</div><div class="label">Vandaag</div></div>'
+    +'<div class="stat-box"><div class="val">'+(stats.todayReviews?Math.round(stats.todayCorrect/stats.todayReviews*100):0)+'%</div><div class="label">Accuracy vandaag</div></div>'
+    +'</div>';
   document.getElementById('prog-content').innerHTML = html;
 }
 
@@ -1516,6 +1593,7 @@ function renderSettings() {
   document.getElementById('set-grammar').className = 'toggle' + (settings.showGrammar ? ' on' : '');
   document.getElementById('set-examples').className = 'toggle' + (settings.showExamples ? ' on' : '');
   document.getElementById('set-speak').className = 'toggle' + (settings.autoSpeak ? ' on' : '');
+  var vsr = document.getElementById('voice-status-row'); if (vsr) vsr.textContent = getVoiceStatusLabel();
   document.getElementById('set-remind').className = 'toggle' + (settings.reminderEnabled ? ' on' : '');
   document.getElementById('remind-time-row').style.display = settings.reminderEnabled ? 'flex' : 'none';
   document.getElementById('set-remind-time').value = settings.reminderTime;
@@ -1781,17 +1859,59 @@ async function sendTestNotification() {
 // ═══════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════
+var polishVoice       = null;
+var polishVoiceStatus = 'unknown'; // unknown|loading|exact|partial|fallback|unavailable
+
+function initPolishVoice() {
+  if (!('speechSynthesis' in window)) { polishVoiceStatus = 'unavailable'; return; }
+  function detect() {
+    var voices = window.speechSynthesis.getVoices();
+    if (!voices.length) { polishVoiceStatus = 'loading'; return; }
+    var exact   = voices.find(function(v){ return v.lang === 'pl-PL'; });
+    var partial = !exact && voices.find(function(v){
+      return (v.lang||'').toLowerCase().startsWith('pl') ||
+             (v.name||'').toLowerCase().includes('polish') ||
+             (v.name||'').toLowerCase().includes('polski');
+    });
+    polishVoice = exact || partial || null;
+    polishVoiceStatus = exact ? 'exact' : partial ? 'partial' : 'fallback';
+  }
+  window.speechSynthesis.onvoiceschanged = detect;
+  detect();
+}
+
+function getVoiceStatusLabel() {
+  var name = polishVoice ? ' (' + polishVoice.name.split(' ').slice(0,2).join(' ') + ')' : '';
+  if (polishVoiceStatus === 'exact')       return '✅ Poolse stem beschikbaar' + name;
+  if (polishVoiceStatus === 'partial')     return '⚠️ Gedeeltelijk Pools beschikbaar' + name;
+  if (polishVoiceStatus === 'fallback')    return '⚠️ Geen Poolse stem — standaardstem gebruikt';
+  if (polishVoiceStatus === 'unavailable') return '🚫 Uitspraak niet beschikbaar op dit apparaat';
+  return '⏳ Stemmen worden geladen...';
+}
+
 function speak(text, lang) {
   if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  var u = new SpeechSynthesisUtterance(text);
-  u.lang = lang || 'pl-PL';
-  u.rate = 0.82;
-  window.speechSynthesis.speak(u);
+  try {
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = lang || 'pl-PL';
+    u.rate = 0.82;
+    if (!lang && polishVoice) u.voice = polishVoice;
+    window.speechSynthesis.speak(u);
+  } catch(e) { console.warn('Uitspraak mislukt:', e.message); }
 }
 function speakCurrentCard() {
   var c = sess.cards[sess.idx]; if (!c) return;
   speak(c.pl); // altijd Pools — luisterknop speelt nooit Nederlands
+}
+
+function updateDailyHistory() {
+  var today = dateStr();
+  var history = load('daily_history') || {};
+  history[today] = {reviews: stats.todayReviews, correct: stats.todayCorrect};
+  var dates = Object.keys(history).sort();
+  while (dates.length > 30) { delete history[dates.shift()]; }
+  save('daily_history', history);
 }
 
 function normalizeAnswer(s) {
@@ -2109,6 +2229,7 @@ function sbAuthLoading(on) {
 // ═══════════════════════════════════════
 initData(); renderHome();
 if (settings.reminderEnabled) scheduleReminder();
+initPolishVoice();
 initServiceWorker();
 initSupabase();
 document.getElementById('set-remind-time').addEventListener('change', function() {
