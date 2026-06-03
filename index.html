@@ -273,6 +273,15 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       </select>
     </div>
     <div class="setting-row">
+      <div><div class="label">Sessiemix</div><div class="sublabel">Verhouding herhaling / nieuw</div></div>
+      <select id="set-mix" style="min-width:130px">
+        <option value="balanced">Gebalanceerd</option>
+        <option value="review-heavy">Veel herhalen</option>
+        <option value="new-heavy">Meer nieuw</option>
+        <option value="weak-words">Moeilijke focus</option>
+      </select>
+    </div>
+    <div class="setting-row">
       <div><div class="label">Foute woorden herhalen</div><div class="sublabel">Extra ronde na sessie</div></div>
       <div id="set-retry" class="toggle on" onclick="toggleSetting(this)"></div>
     </div>
@@ -321,7 +330,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.9</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.0</div>
 </div>
 
 <script>
@@ -552,7 +561,7 @@ const SRS = {
 
 let cards = [];
 let stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:null};
-let settings = {dailyGoal:20, sessionSize:10, direction:'mix', retryWrong:true, showGrammar:true, showExamples:true, autoSpeak:true, reminderEnabled:false, reminderTime:'20:00'};
+let settings = {dailyGoal:20, sessionSize:10, direction:'mix', sessionMix:'balanced', retryWrong:true, showGrammar:true, showExamples:true, autoSpeak:true, reminderEnabled:false, reminderTime:'20:00'};
 let selectedCat = 'all';
 let sess = {cards:[], idx:0, mode:'flashcard', dir:'pl-nl', showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
 
@@ -677,27 +686,16 @@ function getDueCards() {
 // SESSION
 // ═══════════════════════════════════════
 function startSession(mode) {
-  // Type-modus: alleen woorden die al minstens 1 keer als flashcard geoefend zijn
-  var pool = cards.filter(function(c){
-    return (selectedCat==='all'||c.cat===selectedCat) &&
-           (mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1);
-  });
-  if (mode === 'type' && pool.length === 0) {
-    alert('Oefen eerst flashcards — type-modus werkt alleen met woorden die je al herkend hebt.');
-    return;
+  if (mode === 'type') {
+    var hasFlashcards = cards.some(function(c){
+      return (selectedCat==='all'||c.cat===selectedCat) && ((c.modeStats||{}).flashcard||0) >= 1;
+    });
+    if (!hasFlashcards) {
+      alert('Oefen eerst flashcards — type-modus werkt alleen met woorden die je al herkend hebt.');
+      return;
+    }
   }
-  var duePool = getDueCards().filter(function(c){
-    return mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1;
-  });
-  var sz = settings.sessionSize, sel = duePool.slice(0, sz);
-  if (sel.length < sz) {
-    var ids = new Set(sel.map(function(c){return c.id;}));
-    var sortKey = mode === 'listen' ? 'type' : mode;
-    var rest = pool.filter(function(c){return !ids.has(c.id);})
-      .sort(function(a,b){ var am=(a.modeStats||{})[sortKey]||0, bm=(b.modeStats||{})[sortKey]||0; return am!==bm?am-bm:a.box-b.box; }).slice(0, sz - sel.length);
-    sel = sel.concat(rest);
-  }
-  shuffle(sel);
+  var sel = buildSessionCards(mode);
   var dir = mode === 'listen' ? 'pl-nl' : mode === 'type' ? 'nl-pl' : getDir();
   sess = {cards:sel, idx:0, mode:mode, dir:dir, showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
   showScreen('session'); renderSessionCard();
@@ -708,6 +706,93 @@ function getDir() {
   return settings.direction === 'mix' ? (Math.random() > .5 ? 'pl-nl' : 'nl-pl') : settings.direction;
 }
 function shuffle(a) { for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} }
+
+// Persoonlijke moeilijkheidsgraad: hoe vaak fout t.o.v. totale reviews
+function personalDiff(c) {
+  return c.reviews > 0 ? (c.misses||0) / c.reviews : 0;
+}
+
+// Bouw de kaartenset voor een sessie op basis van sessiemix-instelling
+function buildSessionCards(mode) {
+  var now = Date.now();
+  var mix = settings.sessionMix || 'balanced';
+  var sz  = settings.sessionSize || 10;
+
+  var allActive = cards.filter(function(c){
+    return (selectedCat === 'all' || c.cat === selectedCat) &&
+           (mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1);
+  });
+
+  var dueWords = allActive.filter(function(c){ return SRS.getNextReview(c) <= now; })
+    .sort(function(a,b){
+      return personalDiff(b) - personalDiff(a) ||
+             (b.misses||0) - (a.misses||0) ||
+             a.box - b.box ||
+             a.lastReview - b.lastReview;
+    });
+
+  var weakWords = allActive.filter(function(c){
+    var pd = personalDiff(c);
+    return SRS.getNextReview(c) > now &&
+           ((c.misses||0) >= 2 || (c.box <= 1 && c.reviews >= 2) || (c.reviews > 0 && pd >= 0.3));
+  }).sort(function(a,b){ return personalDiff(b)-personalDiff(a) || (b.misses||0)-(a.misses||0) || a.box-b.box; });
+
+  var newWords = allActive.filter(function(c){ return c.reviews === 0; })
+    .sort(function(a,b){ return (a.diff||1)-(b.diff||1); });
+
+  var q = ({
+    'balanced':     {due:.60, weak:.20, nw:.20},
+    'review-heavy': {due:.80, weak:.15, nw:.05},
+    'new-heavy':    {due:.40, weak:.20, nw:.40},
+    'weak-words':   {due:.40, weak:.50, nw:.10},
+  })[mix] || {due:.60, weak:.20, nw:.20};
+
+  var nDue  = Math.round(sz * q.due);
+  var nWeak = Math.round(sz * q.weak);
+  var nNew  = sz - nDue - nWeak;
+
+  var sel = [], seen = new Set();
+  function take(pool, limit) {
+    var added = 0;
+    for (var i = 0; i < pool.length && added < limit; i++) {
+      if (!seen.has(pool[i].id)) { seen.add(pool[i].id); sel.push(pool[i]); added++; }
+    }
+  }
+  take(dueWords,  nDue);
+  take(weakWords, nWeak);
+  take(newWords,  nNew);
+  // Vul tekort aan met beste resterende kaarten
+  if (sel.length < sz) {
+    var rest = allActive.filter(function(c){ return !seen.has(c.id); })
+      .sort(function(a,b){ return personalDiff(b)-personalDiff(a) || a.box-b.box; });
+    take(rest, sz - sel.length);
+  }
+  shuffle(sel);
+  return sel;
+}
+
+// Bereken concrete eisen voor het volgende niveau
+function getNextLevelRequirements() {
+  var lvl = LEVEL.compute();
+  var order = ['A0','A1','A2','B1'];
+  var idx = order.indexOf(lvl.code);
+  if (idx >= order.length - 1) return null;
+  var nextCode = order[idx + 1];
+  var t = LEVEL.thresholds[nextCode];
+  var nextDef = LEVEL.DEFS.find(function(d){return d.code===nextCode;});
+  var errorPct = lvl.errorPct !== undefined ? lvl.errorPct : 100;
+  return {
+    currentLevel: lvl.code,
+    nextLevel:    nextCode,
+    nextLabel:    nextDef.label,
+    nextColor:    nextDef.color,
+    requirements: [
+      { label:'Geleerde woorden', current:lvl.mastered,                           target:t.mastered,                      done:lvl.mastered >= t.mastered },
+      { label:'Gemiddelde box',   current:Math.round((lvl.avgBox||0)*10)/10,      target:t.avgBox,                        done:(lvl.avgBox||0) >= t.avgBox },
+      { label:'Foutpercentage',   current:errorPct, target:Math.round(t.errorRate*100), done:errorPct <= Math.round(t.errorRate*100), lowerIsBetter:true, unit:'%' },
+    ]
+  };
+}
 
 function renderSessionCard() {
   var c = sess.cards[sess.idx]; if (!c) return;
@@ -913,11 +998,26 @@ function renderProgress() {
     +'<div><div style="font-size:18px;font-weight:700">'+lvl.label+'</div>'
     +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+lvl.desc+'</div></div>'
     +'</div>'
-    +(lvl.progress < 100
-      ? '<div class="progress-bar" style="height:6px;margin-bottom:6px"><div class="progress-bar-fill" style="background:'+lvl.color+';width:'+lvl.progress+'%"></div></div>'
-        +'<div style="font-size:11px;color:var(--text-muted)">'+lvl.progressLabel+'</div>'
-      : '<div style="font-size:12px;color:var(--accent);font-weight:600">🏆 Hoogste niveau bereikt!</div>'
-    )
+    +(function(){
+      var req = getNextLevelRequirements();
+      if (!req) return '<div style="font-size:12px;color:var(--accent);font-weight:600">🏆 Hoogste niveau bereikt!</div>';
+      var barsHtml = req.requirements.map(function(r){
+        var pct = r.lowerIsBetter
+          ? Math.min(100, Math.round((1 - r.current / Math.max(r.target,1)) * 100))
+          : Math.min(100, Math.round(r.current / r.target * 100));
+        var val = r.lowerIsBetter
+          ? (r.current + (r.unit||'') + ' → doel ≤' + r.target + (r.unit||''))
+          : (r.current + (r.unit||'') + ' / ' + r.target + (r.unit||''));
+        return '<div style="margin-bottom:8px">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+          +'<span style="font-size:11px;color:var(--text-muted)">'+r.label+'</span>'
+          +'<span style="font-size:11px;font-family:var(--mono);color:'+(r.done?'var(--green)':'var(--text-muted)')+'">'+val+(r.done?' ✓':'')+'</span>'
+          +'</div>'
+          +'<div class="progress-bar" style="height:4px"><div class="progress-bar-fill" style="background:'+(r.done?'var(--green)':req.nextColor)+';width:'+pct+'%"></div></div>'
+          +'</div>';
+      }).join('');
+      return '<div style="margin-bottom:8px"><span style="font-size:11px;color:var(--text-muted)">Richting </span><strong style="font-size:11px;color:'+req.nextColor+'">'+req.nextLevel+' '+req.nextLabel+'</strong></div>' + barsHtml;
+    })()
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">'
     +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+lvl.mastered+'</div><div style="font-size:10px;color:var(--text-muted)">geleerd</div></div>'
     +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+lvl.avgBox+'</div><div style="font-size:10px;color:var(--text-muted)">gem. box</div></div>'
@@ -943,12 +1043,14 @@ function renderWords() {
   var filtered = cards.filter(function(c){return wordsCat==='all'||c.cat===wordsCat;}).sort(function(a,b){return a.box-b.box;});
   list.innerHTML = filtered.map(function(c) {
     var mis = c.misses||0, barColor = mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--green)', cat=CATEGORIES[c.cat]||{}, needed=SRS.requiredStreak(mis);
+    var pd = personalDiff(c), pdColor = c.reviews===0?'var(--text-dim)':pd<0.2?'var(--green)':pd<0.5?'var(--yellow)':'var(--red)';
+    var pdDot = '<div style="width:8px;height:8px;border-radius:50%;background:'+pdColor+';flex-shrink:0" title="Persoonlijke moeilijkheid"></div>';
     var bars = [0,1,2,3,4,5,6].map(function(b){return '<div style="width:4px;height:12px;border-radius:2px;background:'+(b<=c.box?barColor:'var(--text-dim)')+'"></div>';}).join('');
     var badge = mis>0 ? '<span class="badge" style="background:'+(mis>3?'var(--red-soft)':mis>1?'rgba(230,168,23,.13)':'rgba(72,79,88,.2)')+';color:'+(mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--text-muted)')+'">'+mis+'× fout</span>' : '';
     var fc=(c.modeStats||{}).flashcard||0, tc=(c.modeStats||{}).type||0;
     var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.13);font-size:11px;color:var(--purple)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--purple)':'rgba(123,97,255,.2)')+'"></div>';}).join('')+'</div></div>' : '';
     var safePl = c.pl.replace(/'/g,"\\'");
-    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px"><div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
+    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
   }).join('');
 }
 
@@ -971,6 +1073,7 @@ function renderSettings() {
   document.getElementById('set-session').value = settings.sessionSize;
   document.getElementById('set-session-val').textContent = settings.sessionSize;
   document.getElementById('set-direction').value = settings.direction;
+  document.getElementById('set-mix').value = settings.sessionMix || 'balanced';
   document.getElementById('set-retry').className = 'toggle' + (settings.retryWrong ? ' on' : '');
   document.getElementById('set-grammar').className = 'toggle' + (settings.showGrammar ? ' on' : '');
   document.getElementById('set-examples').className = 'toggle' + (settings.showExamples ? ' on' : '');
@@ -984,7 +1087,8 @@ function toggleSetting(el) { el.classList.toggle('on'); }
 function saveSettings() {
   settings.dailyGoal = parseInt(document.getElementById('set-daily').value);
   settings.sessionSize = parseInt(document.getElementById('set-session').value);
-  settings.direction = document.getElementById('set-direction').value;
+  settings.direction  = document.getElementById('set-direction').value;
+  settings.sessionMix = document.getElementById('set-mix').value;
   settings.retryWrong = document.getElementById('set-retry').classList.contains('on');
   settings.showGrammar = document.getElementById('set-grammar').classList.contains('on');
   settings.showExamples = document.getElementById('set-examples').classList.contains('on');
@@ -1421,7 +1525,7 @@ async function sbSyncDown() {
     if (stRow) {
       settings = { ...settings,
         dailyGoal:stRow.daily_goal, sessionSize:stRow.session_size,
-        direction:stRow.direction, retryWrong:stRow.retry_wrong,
+        direction:stRow.direction, sessionMix:stRow.session_mix||'balanced', retryWrong:stRow.retry_wrong,
         showGrammar:stRow.show_grammar, showExamples:stRow.show_examples,
         autoSpeak:stRow.auto_speak !== undefined ? stRow.auto_speak : (settings.autoSpeak !== undefined ? settings.autoSpeak : true),
         reminderEnabled:stRow.reminder_enabled, reminderTime:stRow.reminder_time };
@@ -1463,7 +1567,7 @@ async function sbSyncUp() {
     if (r2.error) throw r2.error;
     var r3 = await sb.from('user_settings').upsert({
       user_id:sbUser.id, daily_goal:settings.dailyGoal, session_size:settings.sessionSize,
-      direction:settings.direction, retry_wrong:settings.retryWrong,
+      direction:settings.direction, session_mix:settings.sessionMix||'balanced', retry_wrong:settings.retryWrong,
       show_grammar:settings.showGrammar, show_examples:settings.showExamples,
       auto_speak:settings.autoSpeak !== undefined ? settings.autoSpeak : true,
       reminder_enabled:settings.reminderEnabled, reminder_time:settings.reminderTime,
@@ -1527,7 +1631,7 @@ document.getElementById('set-remind-time').addEventListener('change', function()
   settings.reminderTime = document.getElementById('set-remind-time').value;
   save('settings', settings); if (settings.reminderEnabled) scheduleReminder(); updateReminderStatus();
 });
-['set-daily','set-session','set-direction'].forEach(function(id) { document.getElementById(id).addEventListener('change', saveSettings); });
+['set-daily','set-session','set-direction','set-mix'].forEach(function(id) { document.getElementById(id).addEventListener('change', saveSettings); });
 window.addEventListener('online',  function() { updateSyncBadge(); retryPendingSync(); });
 window.addEventListener('offline', function() { updateSyncBadge(); });
 </script>
