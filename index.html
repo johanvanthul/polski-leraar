@@ -233,7 +233,10 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
     <button class="icon-btn" onclick="showScreen('home')">←</button>
     <div style="font-size:22px;font-weight:800">Woordenlijst</div>
-    <div id="words-count" style="margin-left:auto;font-size:13px;color:var(--text-muted)"></div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <div id="words-count" style="font-size:13px;color:var(--text-muted)"></div>
+      <button class="icon-btn" onclick="showScreen('manage-words');renderManageWords()" title="Eigen woorden beheren" style="font-size:15px">✏️</button>
+    </div>
   </div>
   <div style="position:relative;margin-bottom:12px">
     <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">🔍</span>
@@ -268,6 +271,97 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     </select>
   </div>
   <div id="words-list" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<!-- MANAGE WORDS -->
+<div id="manage-words" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+    <button class="icon-btn" onclick="showScreen('words');renderWords()">←</button>
+    <div style="font-size:22px;font-weight:800">Eigen woorden</div>
+    <button class="icon-btn" onclick="openWordForm(null)" style="margin-left:auto;background:var(--accent);border-color:var(--accent);color:white;font-size:18px;font-weight:700">+</button>
+  </div>
+  <div id="manage-words-content"></div>
+</div>
+
+<!-- WORD FORM -->
+<div id="word-form" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+    <button class="icon-btn" onclick="showScreen('manage-words');renderManageWords()">←</button>
+    <div id="word-form-title" style="font-size:22px;font-weight:800">Nieuw woord</div>
+  </div>
+  <div id="wf-error" style="display:none;padding:10px 14px;border-radius:12px;background:var(--red-soft);color:var(--red);font-size:13px;margin-bottom:16px"></div>
+  <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:28px">
+    <div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Pools *</div>
+      <input id="wf-pl" type="text" placeholder="Pools woord of frase" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Nederlands *</div>
+      <input id="wf-nl" type="text" placeholder="Nederlandse vertaling" autocorrect="off" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Categorie</div>
+        <select id="wf-cat" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+          <option value="familie">👨‍👩‍👧‍👦 Familie</option>
+          <option value="dagelijks">🏠 Dagelijks</option>
+          <option value="meningen">💬 Meningen</option>
+          <option value="reizen">✈️ Reizen</option>
+          <option value="eten">🍽️ Eten</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Niveau</div>
+        <select id="wf-level" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+          <option value="A0">A0</option>
+          <option value="A1" selected>A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Moeilijkheid</div>
+        <select id="wf-diff" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+          <option value="1">1 — Makkelijk</option>
+          <option value="2" selected>2 — Gemiddeld</option>
+          <option value="3">3 — Moeilijk</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Type</div>
+        <select id="wf-type" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+          <option value="word" selected>Woord</option>
+          <option value="phrase">Frase</option>
+          <option value="sentence">Zin</option>
+          <option value="pattern">Patroon</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Voorbeeldzin Pools</div>
+      <input id="wf-ex-pl" type="text" placeholder="Bijv. Nie rozumiem..." autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Voorbeeldzin Nederlands</div>
+      <input id="wf-ex-nl" type="text" placeholder="Bijv. Ik begrijp het niet..." style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Grammaticatip</div>
+      <input id="wf-gram" type="text" placeholder="Optionele grammaticatip..." style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Tags (kommagescheiden)</div>
+      <input id="wf-tags" type="text" placeholder="Bijv. familie, groeten" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+    </div>
+  </div>
+  <button onclick="saveWordForm()" class="big-btn" style="justify-content:center;width:100%;background:linear-gradient(135deg,var(--accent),#D4543E)">
+    <span style="font-size:16px;font-weight:700">Opslaan</span>
+  </button>
+  <div id="wf-delete-row" style="display:none;margin-top:12px;text-align:center">
+    <button id="wf-delete-btn" onclick="deleteCustomWord(editingWordId)" style="background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:8px">Verwijder dit woord</button>
+  </div>
 </div>
 
 <!-- SETTINGS -->
@@ -361,7 +455,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.1</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.2</div>
 </div>
 
 <script>
@@ -591,6 +685,7 @@ const SRS = {
 };
 
 let cards = [];
+let customWords = []; // eigen woorden toegevoegd via beheerder
 let stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:null};
 let settings = {dailyGoal:20, sessionSize:10, direction:'mix', sessionMix:'balanced', retryWrong:true, showGrammar:true, showExamples:true, autoSpeak:true, reminderEnabled:false, reminderTime:'20:00'};
 let selectedCat = 'all';
@@ -621,6 +716,9 @@ function initData() {
   if (stats.todayDate && stats.todayDate !== today) {
     stats.todayReviews = 0; stats.todayCorrect = 0; stats.todayDate = today; save('stats', stats);
   } else if (!stats.todayDate) { stats.todayDate = today; save('stats', stats); }
+  // Laad custom words en voeg kaarten toe
+  customWords = load('custom_words') || [];
+  mergeCustomWordsIntoCards();
   // Laad sync-staat — herstel 'syncing' naar 'pending' bij onverwachte stop
   syncPending = load('sync_pending') || false;
   syncStatus   = load('last_sync_status') || 'idle';
@@ -750,7 +848,8 @@ function buildSessionCards(mode) {
   var sz  = settings.sessionSize || 10;
 
   var allActive = cards.filter(function(c){
-    return (selectedCat === 'all' || c.cat === selectedCat) &&
+    return isCardActive(c) &&
+           (selectedCat === 'all' || c.cat === selectedCat) &&
            (mode !== 'type' || ((c.modeStats||{}).flashcard||0) >= 1);
   });
 
@@ -1160,6 +1259,172 @@ function renderWords() {
     var safePl = c.pl.replace(/'/g,"\\'");
     return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
   }).join('');
+}
+
+// ═══════════════════════════════════════
+// CUSTOM WORDS (woordenbeheerder)
+// ═══════════════════════════════════════
+function mergeCustomWordsIntoCards() {
+  var existingIds = new Set(cards.map(function(c){ return c.id; }));
+  customWords.filter(function(w){ return w.active; }).forEach(function(w){
+    if (!existingIds.has(w.id)) { cards.push(makeCard(w)); existingIds.add(w.id); }
+  });
+  // Enrich bestaande kaarten met actuele custom-word data (bijv. na bewerking)
+  customWords.forEach(function(w){
+    var ci = cards.findIndex(function(c){ return c.id === w.id; });
+    if (ci >= 0) cards[ci] = {...cards[ci], pl:w.pl, nl:w.nl, cat:w.cat, ex_pl:w.ex_pl||'', ex_nl:w.ex_nl||'', diff:w.diff||1, gram:w.gram||''};
+  });
+}
+
+function isCardActive(c) {
+  if (c.id < 10000) return true; // systeemwoorden altijd actief
+  var cw = customWords.find(function(w){ return w.id === c.id; });
+  return cw ? cw.active : true;
+}
+
+var editingWordId = null;
+
+function openWordForm(id) {
+  editingWordId = id || null;
+  document.getElementById('word-form-title').textContent = id ? 'Woord bewerken' : 'Nieuw woord';
+  var w = id ? customWords.find(function(cw){ return cw.id === id; }) : null;
+  document.getElementById('wf-pl').value    = w ? w.pl    : '';
+  document.getElementById('wf-nl').value    = w ? w.nl    : '';
+  document.getElementById('wf-cat').value   = w ? w.cat   : 'dagelijks';
+  document.getElementById('wf-diff').value  = w ? (w.diff||1) : '2';
+  document.getElementById('wf-level').value = w ? (w.level||'A1') : 'A1';
+  document.getElementById('wf-type').value  = w ? (w.type||'word') : 'word';
+  document.getElementById('wf-ex-pl').value = w ? (w.ex_pl||'') : '';
+  document.getElementById('wf-ex-nl').value = w ? (w.ex_nl||'') : '';
+  document.getElementById('wf-gram').value  = w ? (w.gram||'') : '';
+  document.getElementById('wf-tags').value  = w ? (w.tags||[]).join(', ') : '';
+  var errEl = document.getElementById('wf-error');
+  errEl.textContent = ''; errEl.style.display = 'none';
+  document.getElementById('wf-delete-row').style.display = id ? 'block' : 'none';
+  showScreen('word-form');
+}
+
+function saveWordForm() {
+  var pl  = document.getElementById('wf-pl').value.trim();
+  var nl  = document.getElementById('wf-nl').value.trim();
+  var cat = document.getElementById('wf-cat').value;
+  var errEl = document.getElementById('wf-error');
+  if (!pl || !nl) {
+    errEl.textContent = 'Pools en Nederlands zijn verplicht.';
+    errEl.style.display = 'block'; return;
+  }
+  var now  = Date.now();
+  var diff  = parseInt(document.getElementById('wf-diff').value) || 1;
+  var level = document.getElementById('wf-level').value || 'A1';
+  var type  = document.getElementById('wf-type').value  || 'word';
+  var exPl  = document.getElementById('wf-ex-pl').value.trim();
+  var exNl  = document.getElementById('wf-ex-nl').value.trim();
+  var gram  = document.getElementById('wf-gram').value.trim();
+  var tags  = document.getElementById('wf-tags').value.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+
+  if (editingWordId) {
+    customWords = customWords.map(function(w){
+      if (w.id !== editingWordId) return w;
+      return {...w, pl:pl, nl:nl, cat:cat, diff:diff, level:level, type:type, ex_pl:exPl, ex_nl:exNl, gram:gram, tags:tags, updatedAt:now};
+    });
+    var ci = cards.findIndex(function(c){ return c.id === editingWordId; });
+    if (ci >= 0) cards[ci] = {...cards[ci], pl:pl, nl:nl, cat:cat, ex_pl:exPl, ex_nl:exNl, diff:diff, gram:gram};
+  } else {
+    var nextId = (load('next_custom_id') || 10000);
+    var newWord = {id:nextId, pl:pl, nl:nl, cat:cat, ex_pl:exPl, ex_nl:exNl, diff:diff, gram:gram,
+      level:level, source:'user', active:true, type:type, tags:tags, createdAt:now, updatedAt:now};
+    customWords.push(newWord);
+    cards.push(makeCard(newWord));
+    save('next_custom_id', nextId + 1);
+  }
+  save('custom_words', customWords); save('cards', cards);
+  sbSyncUp();
+  showScreen('manage-words'); renderManageWords();
+}
+
+function toggleWordActive(id) {
+  customWords = customWords.map(function(w){ return w.id===id ? {...w, active:!w.active, updatedAt:Date.now()} : w; });
+  save('custom_words', customWords); sbSyncUp(); renderManageWords();
+}
+
+function deleteCustomWord(id) {
+  if (!confirm('Dit woord en alle oefenvoortgang verwijderen?')) return;
+  customWords = customWords.filter(function(w){ return w.id !== id; });
+  cards = cards.filter(function(c){ return c.id !== id; });
+  save('custom_words', customWords); save('cards', cards);
+  if (sb && sbUser) {
+    sb.from('user_words').delete().eq('user_id', sbUser.id).eq('local_id', id).then(function(){});
+    sb.from('user_cards').delete().eq('user_id', sbUser.id).eq('word_id', id).then(function(){});
+  }
+  sbSyncUp();
+  showScreen('manage-words'); renderManageWords();
+}
+
+function renderManageWords() {
+  var el = document.getElementById('manage-words-content'); if (!el) return;
+  var html = '<div style="display:flex;gap:8px;margin-bottom:20px">'
+    +'<button onclick="exportCustomWords()" class="data-btn" style="background:var(--accent-soft);color:var(--accent);flex:1">Exporteer woorden</button>'
+    +'<button onclick="document.getElementById(\'import-cw-file\').click()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue);flex:1">Importeer</button>'
+    +'<input type="file" id="import-cw-file" accept=".json" style="display:none" onchange="importCustomWords(event)">'
+    +'</div>';
+  if (customWords.length === 0) {
+    html += '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)">'
+      +'<div style="font-size:40px;margin-bottom:12px">📝</div>'
+      +'<div style="font-size:15px;font-weight:600;color:var(--text)">Nog geen eigen woorden</div>'
+      +'<div style="font-size:13px;margin-top:6px">Voeg woorden toe met de + knop hierboven.</div>'
+      +'</div>';
+  } else {
+    var sorted = customWords.slice().sort(function(a,b){ if (a.active!==b.active) return b.active?-1:1; return a.pl.localeCompare(b.pl,'pl'); });
+    sorted.forEach(function(w){
+      var card = cards.find(function(c){ return c.id===w.id; });
+      var reviews = card ? card.reviews : 0, box = card ? card.box : 0;
+      var cat = CATEGORIES[w.cat]||{};
+      html += '<div class="word-item" style="'+(w.active?'':'opacity:.55;')+'"><div style="display:flex;justify-content:space-between;align-items:center">'
+        +'<div style="flex:1">'
+        +'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px;font-weight:600">'+w.pl+'</span>'
+        +(w.active?'':'<span class="badge" style="background:rgba(72,79,88,.2);color:var(--text-muted)">inactief</span>')
+        +'<span class="badge" style="background:rgba(74,144,217,.12);color:var(--blue)">'+w.level+'</span>'
+        +'</div>'
+        +'<div style="font-size:13px;color:var(--text-muted)">'+w.nl+'</div>'
+        +'<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+(cat.emoji||'')+' '+( cat.label||w.cat)+' · '+reviews+' reviews · box '+box+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px">'
+        +'<button onclick="openWordForm('+w.id+')" class="icon-btn" style="font-size:13px" title="Bewerken">✏️</button>'
+        +'<button onclick="toggleWordActive('+w.id+')" class="icon-btn" style="font-size:13px" title="'+(w.active?'Deactiveren':'Activeren')+'">'+(w.active?'⏸':'▶️')+'</button>'
+        +'</div></div></div>';
+    });
+    html += '<div style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:16px">'+customWords.length+' eigen woord'+(customWords.length!==1?'en':'')+'</div>';
+  }
+  el.innerHTML = html;
+}
+
+function exportCustomWords() {
+  var data = {version:1, exportDate:new Date().toISOString(), customWords:customWords};
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url; a.download='polski-leraar-woorden-'+dateStr()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function importCustomWords(event) {
+  var file = event.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.customWords) { alert('Ongeldig bestand.'); return; }
+      if (!confirm('Importeer '+data.customWords.length+' woorden? Bestaande eigen woorden blijven bewaard.')) return;
+      var existingIds = new Set(customWords.map(function(w){ return w.id; }));
+      var imported = data.customWords.filter(function(w){ return !existingIds.has(w.id); });
+      customWords = [...customWords, ...imported];
+      var cardIds = new Set(cards.map(function(c){ return c.id; }));
+      imported.filter(function(w){ return w.active; }).forEach(function(w){ if (!cardIds.has(w.id)) cards.push(makeCard(w)); });
+      save('custom_words', customWords); save('cards', cards); sbSyncUp();
+      renderManageWords();
+      alert('✓ '+imported.length+' woorden geïmporteerd.');
+    } catch(err) { alert('Fout bij importeren: '+err.message); }
+  };
+  reader.readAsText(file); event.target.value = '';
 }
 
 // ═══════════════════════════════════════
@@ -1639,6 +1904,23 @@ async function sbSyncDown() {
         reminderEnabled:stRow.reminder_enabled, reminderTime:stRow.reminder_time };
       save('settings', settings);
     }
+    // Custom words — merge: lokale versie wint bij conflict
+    var { data: cwRows } = await sb.from('user_words').select('*').eq('user_id', sbUser.id);
+    if (cwRows && cwRows.length > 0) {
+      var localCwIds = new Set(customWords.map(function(w){ return w.id; }));
+      cwRows.forEach(function(r){
+        if (!localCwIds.has(r.local_id)) {
+          customWords.push({id:r.local_id, pl:r.pl, nl:r.nl, cat:r.cat,
+            ex_pl:r.ex_pl||'', ex_nl:r.ex_nl||'', diff:r.diff||1, gram:r.gram||'',
+            level:r.level||'A1', source:'user', active:r.active,
+            type:r.type||'word', tags:r.tags||[],
+            createdAt:new Date(r.created_at).getTime(), updatedAt:new Date(r.updated_at).getTime()});
+        }
+      });
+      save('custom_words', customWords);
+      mergeCustomWordsIntoCards();
+      save('cards', cards);
+    }
   } catch(e) { console.warn('syncDown mislukt:', e.message); }
 }
 
@@ -1681,6 +1963,18 @@ async function sbSyncUp() {
       reminder_enabled:settings.reminderEnabled, reminder_time:settings.reminderTime,
     }, {onConflict:'user_id'});
     if (r3.error) throw r3.error;
+    // Sync custom words
+    if (customWords.length) {
+      var wordRows = customWords.map(function(w){
+        return { user_id:sbUser.id, local_id:w.id, pl:w.pl, nl:w.nl, cat:w.cat,
+          ex_pl:w.ex_pl||null, ex_nl:w.ex_nl||null, diff:w.diff||1, gram:w.gram||null,
+          level:w.level||'A1', source:'user', active:w.active, type:w.type||'word',
+          tags:w.tags||[], created_at:new Date(w.createdAt||Date.now()).toISOString(),
+          updated_at:new Date(w.updatedAt||Date.now()).toISOString() };
+      });
+      var r4 = await sb.from('user_words').upsert(wordRows, {onConflict:'user_id,local_id'});
+      if (r4.error) throw r4.error;
+    }
     if (!done) { done = true; clearTimeout(timer); setSyncStatus('success'); }
   } catch(e) {
     if (!done) { done = true; clearTimeout(timer); setSyncStatus('failed'); }
