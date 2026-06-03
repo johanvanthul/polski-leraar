@@ -1490,6 +1490,7 @@ function toggleWordActive(id) {
 }
 
 function deleteCustomWord(id) {
+  if (!id || id < 10000) { alert('Systeemwoorden kunnen niet worden verwijderd.'); return; }
   if (!confirm('Dit woord en alle oefenvoortgang verwijderen?')) return;
   customWords = customWords.filter(function(w){ return w.id !== id; });
   cards = cards.filter(function(c){ return c.id !== id; });
@@ -1561,6 +1562,10 @@ function importCustomWords(event) {
       customWords = [...customWords, ...imported];
       var cardIds = new Set(cards.map(function(c){ return c.id; }));
       imported.filter(function(w){ return w.active; }).forEach(function(w){ if (!cardIds.has(w.id)) cards.push(makeCard(w)); });
+      // next_custom_id bijwerken zodat nieuwe woorden geen botsing krijgen
+      var maxImported = imported.reduce(function(m,w){ return Math.max(m, w.id||0); }, 0);
+      var storedNext = load('next_custom_id') || 10000;
+      if (maxImported >= storedNext) save('next_custom_id', maxImported + 1);
       save('custom_words', customWords); save('cards', cards); sbSyncUp();
       renderManageWords();
       alert('✓ '+imported.length+' woorden geïmporteerd.');
@@ -1742,15 +1747,17 @@ async function savePushSubscription(sub) {
   console.log('[Push] Opslaan in Supabase voor user:', sbUser.id.slice(0, 8) + '...');
   // FIX: upsert i.p.v. update — update doet niets als de rij niet bestaat
   var { error } = await sb.from('user_settings').upsert({
-    user_id:          sbUser.id,
-    daily_goal:       settings.dailyGoal,
-    session_size:     settings.sessionSize,
-    direction:        settings.direction,
-    retry_wrong:      settings.retryWrong,
-    show_grammar:     settings.showGrammar,
-    show_examples:    settings.showExamples,
-    reminder_enabled: settings.reminderEnabled,
-    reminder_time:    settings.reminderTime,
+    user_id:           sbUser.id,
+    daily_goal:        settings.dailyGoal,
+    session_size:      settings.sessionSize,
+    direction:         settings.direction,
+    session_mix:       settings.sessionMix || 'balanced',
+    retry_wrong:       settings.retryWrong,
+    show_grammar:      settings.showGrammar,
+    show_examples:     settings.showExamples,
+    auto_speak:        settings.autoSpeak !== undefined ? settings.autoSpeak : true,
+    reminder_enabled:  settings.reminderEnabled,
+    reminder_time:     settings.reminderTime,
     push_subscription: subJson,
   }, { onConflict: 'user_id' });
   if (error) {
@@ -2120,6 +2127,11 @@ async function sbSyncDown() {
         }
       });
       save('custom_words', customWords);
+      // Zorg dat next_custom_id altijd hoger is dan hoogste bekende ID
+      // — voorkomt ID-botsingen op een tweede apparaat
+      var maxId = customWords.reduce(function(m,w){ return Math.max(m, w.id||0); }, 0);
+      var storedNext = load('next_custom_id') || 10000;
+      if (maxId >= storedNext) save('next_custom_id', maxId + 1);
       mergeCustomWordsIntoCards();
       save('cards', cards);
     }

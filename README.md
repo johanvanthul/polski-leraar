@@ -25,8 +25,9 @@ Voer uit in volgorde via Supabase SQL Editor:
 |---------|--------|
 | `schema.sql` | Basisschema (user_cards, user_stats, user_settings) |
 | `schema-push.sql` | push_subscription kolom + pg_cron job |
-| `schema-autospeak.sql` | auto_speak kolom |
+| `schema-autospeak.sql` | auto_speak kolom in user_settings |
 | `schema-pushlog.sql` | push_log tabel voor notificatie-logging |
+| `schema-userwords.sql` | user_words tabel voor eigen woorden |
 
 ## Edge Function deployen
 
@@ -43,7 +44,7 @@ supabase secrets set VAPID_PRIVATE_KEY=<private_sleutel>
 ## Security checklist
 
 - **Supabase anon-key** is publiek by design — veilig in frontend-code.
-- **RLS** staat aan op alle user-tabellen (`user_cards`, `user_stats`, `user_settings`, `push_log`).
+- **RLS** staat aan op alle user-tabellen (`user_cards`, `user_stats`, `user_settings`, `user_words`, `push_log`).
 - Elke RLS-policy beperkt rijen tot `auth.uid() = user_id`.
 - **Service role key** staat nooit in frontend-code — alleen in Edge Function env vars (`SUPABASE_SERVICE_ROLE_KEY`).
 - **Publieke VAPID-sleutel** mag in frontend staan (is by design publiek).
