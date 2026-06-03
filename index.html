@@ -321,7 +321,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.8</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v3.9</div>
 </div>
 
 <script>
@@ -529,7 +529,11 @@ const SRS = {
   getNextReview(c) {
     const iv = this.intervals[Math.min(c.box, 6)];
     const mf = (c.misses||0) > 3 ? .5 : (c.misses||0) > 1 ? .75 : 1;
-    return c.lastReview + Math.floor(iv * mf) * 864e5;
+    const base = c.lastReview + Math.floor(iv * mf) * 864e5;
+    // Box-0 woorden die al eens gezien zijn: minimaal 4 uur rust
+    // zodat ze niet direct in de volgende sessie terugkomen
+    const cooldown = (c.box === 0 && c.lastReview > 0) ? c.lastReview + 4 * 36e5 : 0;
+    return Math.max(base, cooldown);
   },
   requiredStreak(m) { return m >= 5 ? 4 : m >= 3 ? 3 : m >= 1 ? 2 : 1; },
   promote(c, mode) {
@@ -552,6 +556,11 @@ let settings = {dailyGoal:20, sessionSize:10, direction:'mix', retryWrong:true, 
 let selectedCat = 'all';
 let sess = {cards:[], idx:0, mode:'flashcard', dir:'pl-nl', showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
 
+// Sync state
+var syncStatus  = 'idle'; // idle | syncing | success | failed | pending | local_only
+var syncPending = false;
+var lastSyncAt  = null;
+
 function save(k, v) { try { localStorage.setItem('polski_'+k, JSON.stringify(v)); } catch(e){} }
 function load(k) { try { const d = localStorage.getItem('polski_'+k); return d ? JSON.parse(d) : null; } catch(e) { return null; } }
 
@@ -572,6 +581,11 @@ function initData() {
   if (stats.todayDate && stats.todayDate !== today) {
     stats.todayReviews = 0; stats.todayCorrect = 0; stats.todayDate = today; save('stats', stats);
   } else if (!stats.todayDate) { stats.todayDate = today; save('stats', stats); }
+  // Laad sync-staat — herstel 'syncing' naar 'pending' bij onverwachte stop
+  syncPending = load('sync_pending') || false;
+  syncStatus   = load('last_sync_status') || 'idle';
+  lastSyncAt   = load('last_sync_at') || null;
+  if (syncStatus === 'syncing') syncStatus = syncPending ? 'pending' : 'idle';
 }
 
 function makeCard(w) {
@@ -598,10 +612,8 @@ function endSession() { showScreen('home'); }
 function renderHome() {
   var lvl = LEVEL.compute();
   document.getElementById('home-level').innerHTML = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:'+lvl.color+'22;color:'+lvl.color+'">'+lvl.code+' · '+lvl.label+'</span>';
-  var syncEl = document.getElementById('home-sync');
-  if (sbUser) syncEl.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--green-soft);color:var(--green)">☁️ Gesynchroniseerd</span>';
-  else syncEl.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);cursor:pointer" onclick="showScreen(\'settings\')">☁️ Niet opgeslagen</span>';
-  const mastered = cards.filter(c => c.box >= 4).length;
+  updateSyncBadge();
+  const mastered = cards.filter(c => c.box >= 3).length;
   const due = getDueCards().length;
   const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
   const goal = settings.dailyGoal;
@@ -629,6 +641,7 @@ function renderHome() {
   else { dueEl.style.display = 'none'; }
 
   const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type'), bl = document.getElementById('btn-listen');
+  var sz = settings.sessionSize || 10;
   if (reached) {
     bf.style.background = bt.style.background = bl.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
     bf.querySelector('div div:first-child').textContent = 'Bonus Flashcards';
@@ -642,6 +655,9 @@ function renderHome() {
     bt.querySelector('div div:first-child').textContent = 'Typ het antwoord';
     bl.querySelector('div div:first-child').textContent = 'Luisteren';
   }
+  bf.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · herken & flip';
+  bt.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · actiever leren';
+  bl.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · hoor & vertaal';
   renderCatPills('home-cats', selectedCat, function(c) { selectedCat = c; renderHome(); });
 }
 
@@ -865,7 +881,7 @@ function renderResult() {
   document.getElementById('res-score-text').textContent = sess.correctCount + ' van ' + sess.totalCount + ' goed';
   document.getElementById('res-pct').textContent = pct + '%';
   setTimeout(function(){ document.getElementById('res-ring').setAttribute('stroke-dasharray', (pct/100*377)+' 377'); }, 100);
-  var mastered = cards.filter(function(c){return c.box>=4;}).length;
+  var mastered = cards.filter(function(c){return c.box>=3;}).length;
   document.getElementById('res-stats').innerHTML = '<div class="stat-box"><div class="val">'+stats.streak+'🔥</div><div class="label">Streak</div></div><div class="stat-box"><div class="val">'+mastered+'</div><div class="label">Geleerd</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div>';
   var lu = document.getElementById('res-level-up');
   if (sess.levelUp) {
@@ -888,7 +904,7 @@ function renderResult() {
 // PROGRESS
 // ═══════════════════════════════════════
 function renderProgress() {
-  var m = cards.filter(function(c){return c.box>=4;}).length, l = cards.filter(function(c){return c.box>=1&&c.box<4;}).length, n = cards.filter(function(c){return c.box===0;}).length;
+  var m = cards.filter(function(c){return c.box>=3;}).length, l = cards.filter(function(c){return c.box>=1&&c.box<3;}).length, n = cards.filter(function(c){return c.box===0;}).length;
   var lvl = LEVEL.compute();
   var html = '<div style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:24px 20px;margin-bottom:20px;border:1px solid var(--border)">'
     +'<div style="font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Jouw niveau</div>'
@@ -911,7 +927,7 @@ function renderProgress() {
   html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Woordverdeling</div><div style="display:flex;height:20px;border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="width:'+(m/cards.length*100)+'%;background:var(--green);transition:width .5s"></div><div style="width:'+(l/cards.length*100)+'%;background:var(--yellow);transition:width .5s"></div><div style="width:'+(n/cards.length*100)+'%;background:var(--text-dim);transition:width .5s"></div></div>';
   html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:28px"><span>🟢 Geleerd: '+m+'</span><span>🟡 Bezig: '+l+'</span><span>⚫ Nieuw: '+n+'</span></div>';
   html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Per categorie</div>';
-  Object.entries(CATEGORIES).forEach(function(e) { var k=e[0], v=e[1], cc=cards.filter(function(c){return c.cat===k;}), cm=cc.filter(function(c){return c.box>=4;}).length; html += '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px">'+v.emoji+' '+v.label+'</span><span style="font-size:12px;color:var(--text-muted)">'+cm+'/'+cc.length+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+v.color+';width:'+(cc.length?cm/cc.length*100:0)+'%"></div></div></div>'; });
+  Object.entries(CATEGORIES).forEach(function(e) { var k=e[0], v=e[1], cc=cards.filter(function(c){return c.cat===k;}), cm=cc.filter(function(c){return c.box>=3;}).length; html += '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px">'+v.emoji+' '+v.label+'</span><span style="font-size:12px;color:var(--text-muted)">'+cm+'/'+cc.length+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+v.color+';width:'+(cc.length?cm/cc.length*100:0)+'%"></div></div></div>'; });
   html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px;margin-top:28px">Statistieken</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="stat-box"><div class="val">'+stats.totalReviews+'</div><div class="label">Totaal reviews</div></div><div class="stat-box"><div class="val">'+stats.bestStreak+' 🔥</div><div class="label">Beste streak</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div><div class="stat-box"><div class="val">'+cards.length+'</div><div class="label">Totaal woorden</div></div></div>';
   document.getElementById('prog-content').innerHTML = html;
 }
@@ -943,8 +959,9 @@ function renderSettings() {
   var authEl = document.getElementById('auth-settings');
   if (authEl) {
     if (sbUser) {
-      authEl.innerHTML = '<div class="setting-row"><div><div class="label">Ingelogd als</div><div class="sublabel">'+sbUser.email+'</div></div><button onclick="sbSignOut()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Uitloggen</button></div>'
-        +'<div class="setting-row" style="border:none"><div><div class="label">Automatische sync</div><div class="sublabel">Voortgang opgeslagen in de cloud</div></div><span style="font-size:20px">☁️</span></div>';
+      authEl.innerHTML =
+        '<div class="setting-row"><div><div class="label">Ingelogd als</div><div class="sublabel">'+sbUser.email+'</div></div><button onclick="sbSignOut()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Uitloggen</button></div>'
+        +'<div class="setting-row"><div style="flex:1"><div class="label">Synchronisatiestatus</div><div class="sublabel">'+getSyncDetailLabel()+'</div></div><button id="manual-sync-btn" onclick="manualSync()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue)">Nu sync ↑</button></div>';
     } else {
       authEl.innerHTML = '<div class="setting-row"><div><div class="label">Niet ingelogd</div><div class="sublabel">Voortgang alleen op dit apparaat</div></div><button onclick="showScreen(\'auth\')" class="data-btn" style="background:var(--accent-soft);color:var(--accent)">Inloggen</button></div>';
     }
@@ -1020,6 +1037,8 @@ function importData(event) {
 // REMINDERS
 // ═══════════════════════════════════════
 // ── Web Push / Service Worker ──────────────────────────────────────────────
+// Publieke VAPID-sleutel — veilig in frontend-code (alleen publiek deel van het sleutelpaar).
+// De bijbehorende private sleutel staat uitsluitend als Supabase Edge Function secret (VAPID_PRIVATE_KEY).
 var VAPID_PUBLIC_KEY = 'BG0iXJDMVgWHil-kLlKsgcAyS3BT05t6crFWiyggWrmX_76en7fiBITU8xeEQYwhdRMJ4MdpBps0HNAmegZK67I';
 var swReg = null;
 var swReady = null; // Promise — resolvet als SW geregistreerd is
@@ -1172,18 +1191,48 @@ function scheduleReminder() {
 function updateReminderStatus() {
   var el = document.getElementById('remind-status');
   if (!settings.reminderEnabled) {
-    el.innerHTML = 'Schakel in om dagelijks een pushmelding te ontvangen.';
+    el.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Schakel in om dagelijks een pushmelding te ontvangen.</span>';
     return;
   }
-  var pushOk = swReg && ('PushManager' in window);
-  if (pushOk) {
-    el.innerHTML = '✅ Push-notificatie actief — je iPhone ontvangt een melding om '
-      + '<strong>'+settings.reminderTime+'</strong>, ook als de app gesloten is.'
-      + '<br><span style="color:var(--text-muted);font-size:11px">Vereist: iOS 16.4+, app op beginscherm, push-server actief.</span>';
+  var pushOk   = swReg && ('PushManager' in window);
+  var hasPerm  = ('Notification' in window) && Notification.permission === 'granted';
+  var noPerm   = ('Notification' in window) && Notification.permission === 'denied';
+  var statusHtml;
+  if (noPerm) {
+    statusHtml = '🚫 <strong>Geen toestemming</strong> voor notificaties.<br>'
+      + '<span style="color:var(--text-muted)">Sta notificaties toe via Safari-instellingen → Websites → Meldingen.</span>';
+  } else if (pushOk && hasPerm) {
+    statusHtml = '✅ <strong>Push actief</strong> — je ontvangt een melding om <strong>'+settings.reminderTime+'</strong>, ook als de app gesloten is.'
+      + '<br><span style="color:var(--text-muted)">Vereist: iOS 16.4+, app op beginscherm.</span>';
+  } else if (!pushOk) {
+    statusHtml = '⏰ Herinnering om <strong>'+settings.reminderTime+'</strong> ingesteld.'
+      + '<br><span style="color:var(--yellow)">⚠️ Push werkt alleen als de app op het beginscherm staat (iOS 16.4+). Melding nu alleen als Safari open is.</span>';
   } else {
-    el.innerHTML = '⏰ Herinnering om <strong>'+settings.reminderTime+'</strong> ingesteld.'
-      + '<br><span style="color:var(--yellow)">⚠️ Push werkt alleen als de app op het beginscherm staat (iOS 16.4+) en de push-server actief is. '
-      + 'Op dit moment valt de app terug op een melding alleen als Safari open is.</span>';
+    statusHtml = '⏰ Herinnering om <strong>'+settings.reminderTime+'</strong> — toestemming vereist.';
+  }
+  var testBtn = (hasPerm && settings.reminderEnabled)
+    ? '<div style="margin-top:10px"><button id="test-notif-btn" onclick="sendTestNotification()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue);font-size:12px">🔔 Test notificatie</button></div>'
+    : '';
+  el.innerHTML = '<span style="font-size:12px;line-height:1.6">'+statusHtml+'</span>' + testBtn;
+}
+
+async function sendTestNotification() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    alert('Notificaties zijn niet toegestaan op dit apparaat.'); return;
+  }
+  try {
+    if (swReg) {
+      await swReg.showNotification('🇵🇱 Testmelding', {
+        body: 'Push-notificaties werken correct! Blijf oefenen 💪',
+        tag: 'polski-test', renotify: true,
+      });
+    } else {
+      new Notification('🇵🇱 Testmelding', { body: 'Notificaties werken! Blijf oefenen 💪' });
+    }
+    var btn = document.getElementById('test-notif-btn');
+    if (btn) { btn.textContent = '✓ Verstuurd!'; btn.style.color = 'var(--green)'; setTimeout(function(){ updateReminderStatus(); }, 3000); }
+  } catch(e) {
+    alert('Testmelding mislukt: ' + e.message);
   }
 }
 
@@ -1209,6 +1258,66 @@ function levenshtein(a, b) {
   for (var j = 1; j <= n; j++) dp[0][j] = j;
   for (var i = 1; i <= m; i++) for (var j = 1; j <= n; j++) dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
   return dp[m][n];
+}
+
+// ═══════════════════════════════════════
+// SYNC STATUS
+// ═══════════════════════════════════════
+function saveSyncState() {
+  save('sync_pending', syncPending);
+  save('last_sync_status', syncStatus);
+  save('last_sync_at', lastSyncAt);
+}
+
+function setSyncStatus(s) {
+  syncStatus = s;
+  if (s === 'success') { syncPending = false; lastSyncAt = Date.now(); }
+  else if (s === 'failed' || s === 'pending') { syncPending = true; }
+  saveSyncState();
+  updateSyncBadge();
+}
+
+function getSyncDetailLabel() {
+  if (!sbUser) return 'Niet ingelogd — voortgang alleen lokaal';
+  if (syncStatus === 'syncing')  return 'Bezig met synchroniseren...';
+  if (syncStatus === 'success' && lastSyncAt) return 'Gesynchroniseerd om ' + new Date(lastSyncAt).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
+  if (syncStatus === 'failed')  return 'Sync mislukt — klik Nu sync om opnieuw te proberen';
+  if (syncStatus === 'pending') return 'Wacht op verbinding — wordt automatisch opnieuw geprobeerd';
+  return 'Voortgang opgeslagen in de cloud';
+}
+
+function updateSyncBadge() {
+  var el = document.getElementById('home-sync'); if (!el) return;
+  if (!sbUser) {
+    el.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);cursor:pointer" onclick="showScreen(\'settings\')">📱 Lokaal opgeslagen</span>';
+    return;
+  }
+  var label, bg, color;
+  if (syncStatus === 'syncing') {
+    label = '🔄 Synchroniseren...'; bg = 'rgba(74,144,217,.15)'; color = 'var(--blue)';
+  } else if (syncStatus === 'success') {
+    var t = lastSyncAt ? ' om ' + new Date(lastSyncAt).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'}) : '';
+    label = '✅ Gesynchroniseerd' + t; bg = 'var(--green-soft)'; color = 'var(--green)';
+  } else if (syncStatus === 'failed') {
+    label = '⚠️ Sync mislukt'; bg = 'rgba(229,83,75,.12)'; color = 'var(--red)';
+  } else if (syncStatus === 'pending') {
+    label = '⏳ Niet gesynchroniseerd'; bg = 'rgba(230,168,23,.12)'; color = 'var(--yellow)';
+  } else {
+    label = '☁️ Verbonden'; bg = 'var(--green-soft)'; color = 'var(--green)';
+  }
+  el.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:'+bg+';color:'+color+'">'+label+'</span>';
+}
+
+async function retryPendingSync() {
+  if (!sbUser || !syncPending) return;
+  await sbSyncUp();
+}
+
+async function manualSync() {
+  if (!sbUser) { alert('Log eerst in om te synchroniseren.'); return; }
+  await sbSyncUp();
+  var el = document.getElementById('manual-sync-btn');
+  if (el) { el.textContent = '✓ Klaar'; setTimeout(function(){ el.textContent = 'Nu sync ↑'; renderSettings(); }, 2000); }
 }
 
 // ═══════════════════════════════════════
@@ -1252,6 +1361,14 @@ async function sbSyncDown() {
     var { data: rows, error: ce } = await sb.from('user_cards').select('*').eq('user_id', sbUser.id);
     if (!ce && rows) {
       if (rows.length > 0) {
+        // Bewaar lokale pool-woorden die nog niet in Supabase staan
+        // (bijv. toegevoegd via checkExpansion toen offline)
+        var localSaved = load('cards') || [];
+        var sbWordIds = new Set(rows.map(function(r){return r.word_id;}));
+        var unsyncedPool = localSaved.filter(function(lc){
+          var dbWord = WORD_DB.find(function(w){return w.id===lc.id;});
+          return dbWord && dbWord.pool && !sbWordIds.has(lc.id);
+        });
         cards = rows.map(function(r) {
           var db = WORD_DB.find(function(w){return w.id===r.word_id;}) || {};
           return { id:r.word_id, pl:db.pl||'', nl:db.nl||'', cat:db.cat||'dagelijks',
@@ -1260,6 +1377,7 @@ async function sbSyncDown() {
             misses:r.misses, modeStats:{flashcard:r.mode_flashcard||0,type:r.mode_type||0},
             added:parseInt(r.added_at)||Date.now() };
         });
+        if (unsyncedPool.length) cards = cards.concat(unsyncedPool);
         var ids = new Set(cards.map(function(c){return c.id;}));
         WORD_DB.filter(function(w){return !w.pool&&!ids.has(w.id);}).forEach(function(w){cards.push(makeCard(w));});
         save('cards', cards);
@@ -1298,12 +1416,14 @@ async function sbSyncDown() {
       }
       save('stats', stats);
     }
-    // Settings
+    // Settings — spread over bestaande waarden zodat lokale velden bewaard blijven
     var { data: stRow } = await sb.from('user_settings').select('*').eq('user_id', sbUser.id).maybeSingle();
     if (stRow) {
-      settings = { dailyGoal:stRow.daily_goal, sessionSize:stRow.session_size,
+      settings = { ...settings,
+        dailyGoal:stRow.daily_goal, sessionSize:stRow.session_size,
         direction:stRow.direction, retryWrong:stRow.retry_wrong,
         showGrammar:stRow.show_grammar, showExamples:stRow.show_examples,
+        autoSpeak:stRow.auto_speak !== undefined ? stRow.auto_speak : (settings.autoSpeak !== undefined ? settings.autoSpeak : true),
         reminderEnabled:stRow.reminder_enabled, reminderTime:stRow.reminder_time };
       save('settings', settings);
     }
@@ -1312,6 +1432,7 @@ async function sbSyncDown() {
 
 async function sbSyncUp() {
   if (!sb || !sbUser) return;
+  setSyncStatus('syncing');
   try {
     var cardRows = cards.map(function(c) {
       return { user_id:sbUser.id, word_id:c.id, box:c.box, last_review:c.lastReview,
@@ -1331,9 +1452,14 @@ async function sbSyncUp() {
       user_id:sbUser.id, daily_goal:settings.dailyGoal, session_size:settings.sessionSize,
       direction:settings.direction, retry_wrong:settings.retryWrong,
       show_grammar:settings.showGrammar, show_examples:settings.showExamples,
+      auto_speak:settings.autoSpeak !== undefined ? settings.autoSpeak : true,
       reminder_enabled:settings.reminderEnabled, reminder_time:settings.reminderTime,
     }, {onConflict:'user_id'});
-  } catch(e) { console.warn('syncUp mislukt (offline?):', e.message); }
+    setSyncStatus('success');
+  } catch(e) {
+    setSyncStatus('failed');
+    console.warn('syncUp mislukt (offline?):', e.message);
+  }
 }
 
 // Auth functies
@@ -1388,6 +1514,8 @@ document.getElementById('set-remind-time').addEventListener('change', function()
   save('settings', settings); if (settings.reminderEnabled) scheduleReminder(); updateReminderStatus();
 });
 ['set-daily','set-session','set-direction'].forEach(function(id) { document.getElementById(id).addEventListener('change', saveSettings); });
+window.addEventListener('online',  function() { updateSyncBadge(); retryPendingSync(); });
+window.addEventListener('offline', function() { updateSyncBadge(); });
 </script>
 </body>
 </html>

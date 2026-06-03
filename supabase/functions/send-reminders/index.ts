@@ -7,8 +7,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webPush from 'npm:web-push@3.6.7';
 
 // ─── Tijdzone ──────────────────────────────────────────────────────────────
-// De Edge Function draait in UTC. reminder_time is ingesteld in Amsterdam-tijd.
-// We converteren UTC → Amsterdam voor de vergelijking.
 const TZ = 'Europe/Amsterdam';
 
 function amsterdamNow(): { h: number; m: number } {
@@ -22,15 +20,31 @@ function amsterdamNow(): { h: number; m: number } {
 }
 
 function amsterdamDateStr(): string {
-  // sv-SE locale geeft YYYY-MM-DD — zelfde formaat als de app gebruikt
   return new Intl.DateTimeFormat('sv-SE', { timeZone: TZ }).format(new Date());
 }
 
 // ─── VAPID ─────────────────────────────────────────────────────────────────
+// Publieke sleutel staat ook in frontend (veilig). Private sleutel uitsluitend hier.
 const VAPID_PUBLIC_KEY  = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE_KEY = Deno.env.get('VAPID_PRIVATE_KEY')!;
 
 webPush.setVapidDetails('mailto:johanvanthul@gmail.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+// ─── Helper: log naar push_log tabel ──────────────────────────────────────
+async function logPush(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  status: 'success' | 'failed' | 'skipped' | 'invalid_subscription',
+  error?: string,
+  endpoint?: string,
+) {
+  await supabase.from('push_log').insert({
+    user_id:  userId,
+    status,
+    error:    error ?? null,
+    endpoint: endpoint ? endpoint.slice(0, 120) : null,
+  });
+}
 
 // ─── Handler ───────────────────────────────────────────────────────────────
 Deno.serve(async (_req) => {
@@ -65,6 +79,7 @@ Deno.serve(async (_req) => {
 
     if (!s.reminder_time || !s.push_subscription) {
       log.push(`${uid}: overgeslagen (ontbrekende reminder_time of subscription)`);
+      await logPush(supabase, s.user_id, 'skipped', 'Ontbrekende reminder_time of subscription');
       continue;
     }
 
@@ -72,13 +87,10 @@ Deno.serve(async (_req) => {
     const [rh, rm] = s.reminder_time.split(':').map(Number);
     const currentMin = local.h * 60 + local.m;
     const targetMin  = rh * 60 + rm;
-    // Absolute verschil in minuten, met correct middernacht-omloop
-    const rawDiff = Math.abs(currentMin - targetMin);
-    const diffMin = Math.min(rawDiff, 1440 - rawDiff);
+    const rawDiff    = Math.abs(currentMin - targetMin);
+    const diffMin    = Math.min(rawDiff, 1440 - rawDiff);
 
-    log.push(
-      `${uid}: reminder=${s.reminder_time}, nu=${local.h}:${String(local.m).padStart(2,'0')}, verschil=${diffMin}min`,
-    );
+    log.push(`${uid}: reminder=${s.reminder_time}, nu=${local.h}:${String(local.m).padStart(2,'0')}, verschil=${diffMin}min`);
 
     if (diffMin > 10) {
       log.push(`  → buiten ±10min venster, overgeslagen`);
@@ -92,7 +104,6 @@ Deno.serve(async (_req) => {
       .eq('user_id', s.user_id)
       .maybeSingle();
 
-    // today_date in de app is ook Amsterdam-tijd (dateStr gebruikt toLocaleDateString('sv-SE') in de browser)
     const done = (stats?.today_date === today ? stats.today_reviews : 0) ?? 0;
     const goal = s.daily_goal ?? 20;
 
@@ -104,8 +115,17 @@ Deno.serve(async (_req) => {
     }
 
     // ── Push sturen ────────────────────────────────────────────────────────
+    let subscription: PushSubscription;
     try {
-      const subscription = JSON.parse(s.push_subscription);
+      subscription = JSON.parse(s.push_subscription);
+    } catch {
+      log.push(`  → ❌ Ongeldige subscription JSON, opgeruimd`);
+      await supabase.from('user_settings').update({ push_subscription: null }).eq('user_id', s.user_id);
+      await logPush(supabase, s.user_id, 'invalid_subscription', 'Ongeldige JSON in push_subscription');
+      continue;
+    }
+
+    try {
       await webPush.sendNotification(
         subscription,
         JSON.stringify({
@@ -114,8 +134,19 @@ Deno.serve(async (_req) => {
         }),
       );
       log.push(`  → ✅ Notificatie verstuurd`);
-    } catch (e) {
+      await logPush(supabase, s.user_id, 'success', undefined, (subscription as any).endpoint);
+    } catch (e: any) {
       log.push(`  → ❌ Push mislukt: ${e.message}`);
+      // 410 Gone of 404 = subscription verlopen/ongeldig → opruimen
+      if (e.statusCode === 410 || e.statusCode === 404) {
+        log.push(`  → Subscription verlopen (${e.statusCode}), opgeruimd`);
+        await supabase.from('user_settings')
+          .update({ push_subscription: null, reminder_enabled: false })
+          .eq('user_id', s.user_id);
+        await logPush(supabase, s.user_id, 'invalid_subscription', `HTTP ${e.statusCode} — verlopen`, (subscription as any).endpoint);
+      } else {
+        await logPush(supabase, s.user_id, 'failed', e.message, (subscription as any).endpoint);
+      }
     }
   }
 
