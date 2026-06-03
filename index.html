@@ -230,12 +230,43 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 
 <!-- WORDS -->
 <div id="words" class="screen">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
     <button class="icon-btn" onclick="showScreen('home')">←</button>
     <div style="font-size:22px;font-weight:800">Woordenlijst</div>
     <div id="words-count" style="margin-left:auto;font-size:13px;color:var(--text-muted)"></div>
   </div>
-  <div id="words-cats" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:16px;padding-bottom:4px"></div>
+  <div style="position:relative;margin-bottom:12px">
+    <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">🔍</span>
+    <input id="words-search" type="text" placeholder="Zoeken op woord, vertaling, zin..." autocomplete="off" autocorrect="off" spellcheck="false"
+      style="width:100%;padding:12px 14px 12px 42px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)"
+      oninput="wordsSearch=this.value;renderWords()">
+  </div>
+  <div id="words-cats" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px"></div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px">
+    <select id="words-status-sel" onchange="wordsStatus=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;flex-shrink:0">
+      <option value="all">Alle</option>
+      <option value="new">Nieuw</option>
+      <option value="learning">Aan het leren</option>
+      <option value="learned">Geleerd</option>
+      <option value="problem">Probleemwoorden</option>
+    </select>
+    <select id="words-level-sel" onchange="wordsLevel=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;flex-shrink:0">
+      <option value="all">Alle niveaus</option>
+      <option value="A0">A0</option>
+      <option value="A1">A1</option>
+      <option value="A2">A2</option>
+      <option value="B1">B1</option>
+    </select>
+    <select id="words-sort-sel" onchange="wordsSort=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;flex-shrink:0">
+      <option value="box-asc">Laagste box</option>
+      <option value="misses-desc">Meeste fouten</option>
+      <option value="pd-desc">Moeilijkste eerst</option>
+      <option value="recent">Laatst geoefend</option>
+      <option value="newest">Nieuwste eerst</option>
+      <option value="alpha-pl">A–Z Pools</option>
+      <option value="alpha-nl">A–Z Nederlands</option>
+    </select>
+  </div>
   <div id="words-list" style="display:flex;flex-direction:column;gap:8px"></div>
 </div>
 
@@ -330,7 +361,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div class="settings-section-title">☁️ Account & Sync</div>
     <div id="auth-settings"></div>
   </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.0</div>
+  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.1</div>
 </div>
 
 <script>
@@ -1035,12 +1066,89 @@ function renderProgress() {
 // ═══════════════════════════════════════
 // WORDS
 // ═══════════════════════════════════════
-var wordsCat = 'all';
+var wordsCat    = 'all';
+var wordsStatus = 'all';
+var wordsLevel  = 'all';
+var wordsSort   = 'box-asc';
+var wordsSearch = '';
+
+function getWordLevel(c) {
+  var db = WORD_DB.find(function(w){ return w.id === c.id; });
+  return (db && db.level) || 'A0';
+}
+
+function normalizeForSearch(s) {
+  return (s||'').toLowerCase()
+    .replace(/ą/g,'a').replace(/ć/g,'c').replace(/ę/g,'e').replace(/ł/g,'l')
+    .replace(/ń/g,'n').replace(/ó/g,'o').replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z');
+}
+
 function renderWords() {
-  document.getElementById('words-count').textContent = cards.length + ' woorden';
   renderCatPills('words-cats', wordsCat, function(c) { wordsCat = c; renderWords(); });
+
+  // Sync select waarden met state
+  var ss = document.getElementById('words-status-sel'); if(ss) ss.value = wordsStatus;
+  var sl = document.getElementById('words-level-sel');  if(sl) sl.value = wordsLevel;
+  var so = document.getElementById('words-sort-sel');   if(so) so.value = wordsSort;
+  var si = document.getElementById('words-search');     if(si && document.activeElement !== si) si.value = wordsSearch;
+
+  var filtered = cards.slice();
+
+  // Categorie
+  if (wordsCat !== 'all') filtered = filtered.filter(function(c){ return c.cat === wordsCat; });
+
+  // Zoeken
+  if (wordsSearch.trim()) {
+    var q = normalizeForSearch(wordsSearch.trim());
+    filtered = filtered.filter(function(c){
+      return normalizeForSearch(c.pl).includes(q) ||
+             normalizeForSearch(c.nl).includes(q) ||
+             normalizeForSearch(c.ex_pl).includes(q) ||
+             normalizeForSearch(c.ex_nl).includes(q) ||
+             normalizeForSearch(c.gram).includes(q);
+    });
+  }
+
+  // Status
+  if (wordsStatus !== 'all') {
+    filtered = filtered.filter(function(c){
+      var pd = personalDiff(c);
+      if (wordsStatus === 'new')      return c.reviews === 0;
+      if (wordsStatus === 'learning') return c.reviews > 0 && c.box < 3;
+      if (wordsStatus === 'learned')  return c.box >= 3;
+      if (wordsStatus === 'problem')  return (c.misses||0) >= 3 || (c.reviews > 0 && pd > 0.4);
+      return true;
+    });
+  }
+
+  // Niveau
+  if (wordsLevel !== 'all') {
+    filtered = filtered.filter(function(c){ return getWordLevel(c) === wordsLevel; });
+  }
+
+  // Sorteren
+  filtered = filtered.slice().sort(function(a,b){
+    if (wordsSort === 'misses-desc')  return (b.misses||0)-(a.misses||0) || a.box-b.box;
+    if (wordsSort === 'pd-desc')      return personalDiff(b)-personalDiff(a) || (b.misses||0)-(a.misses||0);
+    if (wordsSort === 'recent')       return b.lastReview - a.lastReview;
+    if (wordsSort === 'newest')       return (b.added||0)-(a.added||0);
+    if (wordsSort === 'alpha-pl')     return a.pl.localeCompare(b.pl, 'pl');
+    if (wordsSort === 'alpha-nl')     return a.nl.localeCompare(b.nl, 'nl');
+    return a.box - b.box || (b.misses||0)-(a.misses||0); // box-asc default
+  });
+
+  document.getElementById('words-count').textContent = filtered.length + (filtered.length !== cards.length ? '/'+cards.length : '') + ' woorden';
+
   var list = document.getElementById('words-list');
-  var filtered = cards.filter(function(c){return wordsCat==='all'||c.cat===wordsCat;}).sort(function(a,b){return a.box-b.box;});
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)">'
+      + '<div style="font-size:36px;margin-bottom:12px">🔍</div>'
+      + '<div style="font-size:15px;font-weight:600;color:var(--text)">Geen woorden gevonden</div>'
+      + '<div style="font-size:13px;margin-top:6px">Pas de filters aan of verwijder de zoekopdracht.</div>'
+      + '</div>';
+    return;
+  }
   list.innerHTML = filtered.map(function(c) {
     var mis = c.misses||0, barColor = mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--green)', cat=CATEGORIES[c.cat]||{}, needed=SRS.requiredStreak(mis);
     var pd = personalDiff(c), pdColor = c.reviews===0?'var(--text-dim)':pd<0.2?'var(--green)':pd<0.5?'var(--yellow)':'var(--red)';
