@@ -121,6 +121,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       </div>
     </div>
     <div style="display:flex;gap:8px">
+      <button id="btn-silent-home" class="icon-btn" onclick="toggleSilentMode()" title="Stille modus aan/uit">🔊</button>
       <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
       <button class="icon-btn" onclick="showScreen('progress')">📊</button>
       <button class="icon-btn" onclick="showScreen('words')">📚</button>
@@ -178,7 +179,10 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
     <button class="icon-btn" onclick="endSession()" style="font-size:14px">✕</button>
     <div style="flex:1;margin:0 16px"><div class="progress-bar"><div id="sess-bar" class="progress-bar-fill" style="background:linear-gradient(90deg,var(--accent),var(--yellow));width:0"></div></div></div>
-    <div id="sess-count" style="font-size:14px;color:var(--text-muted);font-family:var(--mono)">1/10</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="btn-silent-sess" onclick="toggleSilentMode()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;line-height:1" title="Stille modus aan/uit">🔊</button>
+      <div id="sess-count" style="font-size:14px;color:var(--text-muted);font-family:var(--mono)">1/10</div>
+    </div>
   </div>
   <div id="sess-direction" style="text-align:center;margin-bottom:12px"></div>
   <div id="sess-retry-banner" style="display:none;text-align:center;margin-bottom:12px"><span style="font-size:11px;color:var(--yellow);background:rgba(230,168,23,.1);padding:4px 12px;border-radius:20px;font-weight:600">🔁 Herhalingsronde</span></div>
@@ -768,6 +772,26 @@ function showScreen(id) {
 }
 function endSession() { showScreen('home'); }
 
+function toggleSilentMode() {
+  settings.autoSpeak = !settings.autoSpeak;
+  save('settings', settings);
+  sbSyncUp();
+  updateSilentButtons();
+  // Stop eventuele lopende uitspraak direct
+  if (!settings.autoSpeak && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+function updateSilentButtons() {
+  var silent = !settings.autoSpeak;
+  var icon  = silent ? '🔇' : '🔊';
+  var title = silent ? 'Stille modus aan — klik voor geluid' : 'Geluid aan — klik voor stille modus';
+  ['btn-silent-home', 'btn-silent-sess'].forEach(function(id) {
+    var el = document.getElementById(id); if (!el) return;
+    el.textContent = icon; el.title = title;
+    el.style.opacity = silent ? '0.6' : '1';
+  });
+}
+
 // ═══════════════════════════════════════
 // HOME
 // ═══════════════════════════════════════
@@ -775,6 +799,7 @@ function renderHome() {
   var lvl = LEVEL.compute();
   document.getElementById('home-level').innerHTML = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:'+lvl.color+'22;color:'+lvl.color+'">'+lvl.code+' · '+lvl.label+'</span>';
   updateSyncBadge();
+  updateSilentButtons();
   const mastered = cards.filter(c => c.box >= 3).length;
   const due = getDueCards().length;
   const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
@@ -973,6 +998,7 @@ function getNextLevelRequirements() {
 
 function renderSessionCard() {
   var c = sess.cards[sess.idx]; if (!c) return;
+  updateSilentButtons();
   var cat = CATEGORIES[c.cat]||{};
   document.getElementById('sess-bar').style.width = ((sess.idx+1)/sess.cards.length*100)+'%';
   document.getElementById('sess-count').textContent = (sess.idx+1)+'/'+sess.cards.length;
