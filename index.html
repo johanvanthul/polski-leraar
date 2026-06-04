@@ -871,7 +871,8 @@ function getDueCards() {
 function startSession(mode) {
   if (mode === 'type') {
     var hasFlashcards = cards.some(function(c){
-      return (selectedCat==='all'||c.cat===selectedCat) && ((c.modeStats||{}).flashcard||0) >= 1;
+      return isCardActive(c) && getCardType(c)==='word' &&
+             (selectedCat==='all'||c.cat===selectedCat) && ((c.modeStats||{}).flashcard||0) >= 1;
     });
     if (!hasFlashcards) {
       alert('Oefen eerst flashcards — type-modus werkt alleen met woorden die je al herkend hebt.');
@@ -879,6 +880,10 @@ function startSession(mode) {
     }
   }
   var sel = buildSessionCards(mode);
+  if (mode === 'sentence' && sel.length === 0) {
+    alert('Je hebt nog geen zinnen of frasen vrijgespeeld. Oefen meer flashcards — zinnen worden automatisch toegevoegd zodra je genoeg woorden kent.');
+    return;
+  }
   var dir = mode === 'listen' ? 'pl-nl' : (mode === 'type' || mode === 'sentence') ? 'nl-pl' : getDir();
   sess = {cards:sel, idx:0, mode:mode, dir:dir, showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
   showScreen('session'); renderSessionCard();
@@ -901,26 +906,23 @@ function buildSessionCards(mode) {
   var mix = settings.sessionMix || 'balanced';
   var sz  = settings.sessionSize || 10;
 
+  var isSentMode = mode === 'sentence';
+
   var allActive = cards.filter(function(c){
     if (!isCardActive(c)) return false;
     if (selectedCat !== 'all' && c.cat !== selectedCat) return false;
-    if (mode === 'type' && ((c.modeStats||{}).flashcard||0) < 1) return false;
-    // Zinnenmodus: gebruik alleen sentences/patterns/phrases + gewone woorden als aanvulling
-    if (mode === 'sentence') return true;
-    return true;
+    var t = getCardType(c);
+    // Strikte scheiding: zinnen-modus = alleen sentence/pattern/phrase
+    //                   overige modi  = alleen word
+    if (isSentMode) return t === 'sentence' || t === 'pattern' || t === 'phrase';
+    return t === 'word';
   });
 
-  // Zinnenmodus: zinnen/patronen/frasen prioriteit, gewone woorden als aanvulling
-  if (mode === 'sentence') {
-    var sentencePool = allActive.filter(function(c){ var t=getCardType(c); return t==='sentence'||t==='pattern'||t==='phrase'; });
-    var wordPool     = allActive.filter(function(c){ return getCardType(c)==='word'; });
-    var allSorted    = sentencePool.concat(wordPool).sort(function(a,b){
+  // Zinnenmodus: sorteer op personalDiff, geen fallback naar gewone woorden
+  if (isSentMode) {
+    var sel2 = allActive.slice().sort(function(a,b){
       return personalDiff(b)-personalDiff(a) || (b.misses||0)-(a.misses||0) || a.box-b.box;
-    });
-    var sel2 = [], seen2 = new Set();
-    for (var i=0; i<allSorted.length && sel2.length<sz; i++) {
-      if (!seen2.has(allSorted[i].id)) { seen2.add(allSorted[i].id); sel2.push(allSorted[i]); }
-    }
+    }).slice(0, sz);
     shuffle(sel2);
     return sel2;
   }
