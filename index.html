@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Polski">
-<meta name="theme-color" content="#0D1117">
+<meta name="theme-color" content="#FBF7F1">
 <link rel="apple-touch-icon" href="/polski-leraar/icon.png">
 <link rel="manifest" href="/polski-leraar/manifest.json">
 <title>Polski Leraar</title>
@@ -14,13 +14,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
-  --bg: #0D1117; --surface: #161B22; --card: #1C2333; --card-hover: #243044;
-  --accent: #E8634A; --accent-soft: rgba(232,99,74,.15);
-  --green: #2EAD6D; --green-soft: rgba(46,173,109,.15);
-  --red: #E5534B; --red-soft: rgba(229,83,75,.15);
-  --yellow: #E6A817; --blue: #4A90D9; --purple: #7B61FF;
-  --text: #E6EDF3; --text-muted: #8B949E; --text-dim: #484F58;
-  --border: #21262D;
+  --bg: #FBF7F1; --surface: #FFFFFF; --card: #FFFFFF; --card-hover: #F5F0E8;
+  --accent: #D9543B; --accent-dark: #C0492F; --accent-soft: rgba(217,84,59,.12);
+  --green: #1F9D62; --green-soft: rgba(31,157,98,.12);
+  --red: #C8554B; --red-soft: rgba(200,85,75,.12);
+  --yellow: #E6A817; --blue: #4A90D9;
+  /* purple aliased to accent for backwards compat with inline styles */
+  --purple: #D9543B;
+  --text: #211D18; --text-muted: #8A8175; --text-dim: #A8917A;
+  --border: #ECE3D6; --border-soft: #F2EADF;
   --font: 'DM Sans', -apple-system, sans-serif;
   --mono: 'JetBrains Mono', monospace;
   --safe-top: env(safe-area-inset-top, 0px);
@@ -34,204 +36,215 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 .screen.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes correctFlash { 0% { box-shadow: 0 0 0 0 rgba(46,173,109,.5); } 100% { box-shadow: 0 0 40px 10px rgba(46,173,109,0); } }
+@keyframes correctFlash { 0% { box-shadow: 0 0 0 0 rgba(31,157,98,.5); } 100% { box-shadow: 0 0 40px 10px rgba(31,157,98,0); } }
 @keyframes wrongShake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
 .anim-slide { animation: slideUp .3s ease; }
 .anim-correct { animation: correctFlash .5s ease; }
 .anim-wrong { animation: wrongShake .4s ease; }
-.pill { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: transparent; color: var(--text-muted); white-space: nowrap; transition: all .2s; }
-.pill.active { background: var(--accent-soft); color: var(--accent); }
-.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 16px; display: flex; align-items: center; justify-content: center; }
-.big-btn { display: flex; align-items: center; gap: 14px; padding: 18px 22px; border-radius: 18px; color: white; text-align: left; width: 100%; transition: transform .15s, opacity .15s; }
+.pill { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; background: transparent; color: var(--text-muted); white-space: nowrap; transition: all .2s; border: 1px solid transparent; }
+.pill.active { background: var(--accent-soft); color: var(--accent); border-color: rgba(217,84,59,.2); }
+.icon-btn { width: 40px; height: 40px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(120,90,60,.06); }
+.big-btn { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-radius: 16px; color: white; text-align: left; width: 100%; transition: transform .15s, opacity .15s; }
 .big-btn:active { transform: scale(.97); opacity: .9; }
-.answer-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px; border-radius: 18px; font-size: 14px; font-weight: 600; }
-.progress-bar { height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+.answer-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px; border-radius: 16px; font-size: 14px; font-weight: 600; }
+.progress-bar { height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .progress-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
-.stat-box { background: var(--surface); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); }
+.stat-box { background: var(--card); border-radius: 16px; padding: 16px 18px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(120,90,60,.05); }
 .stat-box .val { font-size: 22px; font-weight: 800; }
 .stat-box .label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.word-item { background: var(--surface); border-radius: 14px; padding: 14px 16px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; }
-.word-item.trouble { border-color: rgba(229,83,75,.2); }
-.badge { font-size: 10px; padding: 2px 6px; border-radius: 8px; font-weight: 700; font-family: var(--mono); }
+.word-item { background: var(--card); border-radius: 16px; padding: 14px 16px; border: 1px solid var(--border); cursor: pointer; transition: all .2s; box-shadow: 0 2px 8px rgba(120,90,60,.04); }
+.word-item.trouble { border-color: rgba(200,85,75,.3); }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 700; font-family: var(--mono); }
 .grammar-box { text-align: left; padding: 12px 14px; border-radius: 12px; background: rgba(230,168,23,.07); border: 1px solid rgba(230,168,23,.2); margin-top: 10px; }
 .grammar-box .title { font-size: 11px; font-weight: 700; color: var(--yellow); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 4px; }
 .grammar-box .body { font-size: 12px; color: var(--text); line-height: 1.6; }
-.example-box { text-align: left; padding: 12px 14px; background: var(--surface); border-radius: 12px; margin-top: 10px; }
+.example-box { text-align: left; padding: 12px 14px; background: var(--bg); border-radius: 12px; margin-top: 10px; border: 1px solid var(--border); }
 .example-box .pl { font-size: 14px; font-weight: 600; }
 .example-box .nl { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-.mode-badge { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 8px; background: var(--card); font-size: 11px; color: var(--text-muted); }
-.settings-section { margin-bottom: 28px; }
-.settings-section-title { font-size: 13px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.mode-badge { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
+.settings-section { margin-bottom: 16px; background: var(--card); border-radius: 20px; border: 1px solid var(--border); padding: 0 16px 4px; box-shadow: 0 4px 12px rgba(120,90,60,.05); }
+.settings-section-title { font-size: 10px; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin: 16px 0 4px; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border-soft); }
 .setting-row:last-child { border-bottom: none; }
-.setting-row .label { font-size: 14px; }
+.setting-row .label { font-size: 14px; font-weight: 500; }
 .setting-row .sublabel { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .setting-row input[type=range] { width: 100px; accent-color: var(--accent); }
-.setting-row select { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
-.toggle { position: relative; width: 48px; height: 28px; background: var(--text-dim); border-radius: 14px; transition: background .2s; cursor: pointer; flex-shrink: 0; }
+.setting-row select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; font-size: 13px; }
+.toggle { position: relative; width: 48px; height: 28px; background: #D7CDBE; border-radius: 14px; transition: background .2s; cursor: pointer; flex-shrink: 0; }
 .toggle.on { background: var(--green); }
-.toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; background: white; border-radius: 50%; transition: transform .2s; }
+.toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 .toggle.on::after { transform: translateX(20px); }
-.data-btn { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; transition: all .15s; }
+.data-btn { padding: 9px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; transition: all .15s; }
 .data-btn:active { transform: scale(.96); }
+/* Poolse tekens snelknoppen */
+.pl-char-btn { padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 15px; font-weight: 500; min-width: 36px; transition: background .15s; }
+.pl-char-btn:active { background: var(--accent-soft); }
+/* Sessie richting-pill */
+.dir-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); }
+/* Kaart-schaduw voor sessie */
+.sess-card-shadow { box-shadow: 0 8px 22px rgba(120,90,60,.07); }
 </style>
 </head>
 <body>
 
 <!-- AUTH -->
 <div id="auth" class="screen" style="padding:0;overflow:hidden">
-<div style="display:flex;flex-direction:column;min-height:100dvh;justify-content:center;padding:40px 20px;overflow:hidden">
-  <div style="text-align:center;margin-bottom:40px">
-    <div style="font-size:52px;margin-bottom:16px">🇵🇱</div>
-    <div style="font-size:28px;font-weight:800;margin-bottom:8px">Polski Leraar</div>
-    <div style="font-size:14px;color:var(--text-muted);line-height:1.6">Log in om je voortgang op te slaan<br>en te synchroniseren tussen apparaten.</div>
+<div style="display:flex;flex-direction:column;min-height:100dvh;justify-content:center;padding:40px 24px;overflow:hidden;background:var(--bg)">
+  <div style="text-align:center;margin-bottom:36px">
+    <div style="font-size:52px;margin-bottom:12px">🇵🇱</div>
+    <div style="font-size:26px;font-weight:800;margin-bottom:8px;color:var(--text)">Polski Leraar</div>
+    <div style="font-size:14px;color:var(--text-muted);line-height:1.7">Log in om je voortgang op te slaan<br>en te synchroniseren tussen apparaten.</div>
   </div>
-  <div id="auth-msg" style="display:none;padding:10px 16px;border-radius:12px;font-size:13px;margin-bottom:16px;text-align:center"></div>
-  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-    <input type="email" id="auth-email" placeholder="E-mailadres" autocomplete="email" style="padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:16px;width:100%">
-    <input type="password" id="auth-pw" placeholder="Wachtwoord (min. 6 tekens)" autocomplete="current-password" style="padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:16px;width:100%">
+  <div id="auth-msg" style="display:none;padding:12px 16px;border-radius:14px;font-size:13px;margin-bottom:16px;text-align:center;font-weight:500"></div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+    <input type="email" id="auth-email" placeholder="E-mailadres" autocomplete="email" style="padding:16px 18px;border-radius:16px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:16px;width:100%;box-shadow:0 2px 8px rgba(120,90,60,.05)">
+    <input type="password" id="auth-pw" placeholder="Wachtwoord (min. 6 tekens)" autocomplete="current-password" style="padding:16px 18px;border-radius:16px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:16px;width:100%;box-shadow:0 2px 8px rgba(120,90,60,.05)">
   </div>
   <div style="display:flex;flex-direction:column;gap:10px">
-    <button onclick="sbSignIn()" class="big-btn" style="justify-content:center;background:linear-gradient(135deg,var(--accent),#D4543E)">
-      <span style="font-size:16px;font-weight:700">Inloggen</span>
+    <button onclick="sbSignIn()" style="width:100%;padding:16px;border-radius:16px;background:var(--accent);color:white;font-size:16px;font-weight:700;border:none;cursor:pointer;box-shadow:0 8px 20px rgba(199,73,47,.25);transition:opacity .15s" onmousedown="this.style.opacity='.9'" onmouseup="this.style.opacity='1'">
+      Inloggen
     </button>
-    <button onclick="sbSignUp()" class="big-btn" style="justify-content:center;background:linear-gradient(135deg,var(--purple),#6247E5)">
-      <span style="font-size:16px;font-weight:700">Nieuw account aanmaken</span>
+    <button onclick="sbSignUp()" style="width:100%;padding:16px;border-radius:16px;background:var(--card);color:var(--text);font-size:15px;font-weight:600;border:1.5px solid var(--border);cursor:pointer;transition:opacity .15s">
+      Nieuw account aanmaken
     </button>
   </div>
   <div style="text-align:center;margin-top:20px">
-    <button onclick="sbSkip()" style="background:none;border:none;color:var(--text-muted);font-size:13px;padding:8px;cursor:pointer;text-decoration:underline">Ga verder zonder account →</button>
+    <button onclick="sbSkip()" style="background:none;border:none;color:var(--text-muted);font-size:13px;padding:8px;cursor:pointer;font-weight:500">Ga verder zonder account →</button>
   </div>
-  <div id="auth-spinner" style="display:none;text-align:center;margin-top:16px;color:var(--text-muted);font-size:13px">⏳ Even wachten...</div>
+  <div id="auth-spinner" style="display:none;text-align:center;margin-top:16px;color:var(--text-muted);font-size:13px;font-weight:500">Even wachten...</div>
 </div>
 </div>
 
 <!-- HOME -->
 <div id="home" class="screen active">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px">
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px">
     <div>
-      <div style="font-size:13px;color:var(--text-muted);font-weight:500;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Polski Leraar</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Cześć, Johan!</div>
-        <span style="font-size:24px">🇵🇱</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <div style="font-size:22px;font-weight:800;color:var(--text);line-height:1.2">Cześć, Johan! <span style="font-size:20px">🇵🇱</span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap">
         <div id="home-level"></div>
         <div id="home-sync"></div>
       </div>
     </div>
-    <div style="display:flex;gap:8px">
-      <button id="btn-silent-home" class="icon-btn" onclick="toggleSilentMode()" title="Stille modus aan/uit">🔊</button>
-      <button class="icon-btn" onclick="showScreen('settings')">⚙️</button>
-      <button class="icon-btn" onclick="showScreen('progress')">📊</button>
-      <button class="icon-btn" onclick="showScreen('words')">📚</button>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button id="btn-silent-home" class="icon-btn" onclick="toggleSilentMode()" title="Stille modus aan/uit" style="font-size:15px">♪</button>
+      <button class="icon-btn" onclick="showScreen('progress')" title="Voortgang" style="font-size:15px">▦</button>
+      <button class="icon-btn" onclick="showScreen('settings')" title="Instellingen" style="font-size:15px">⚙</button>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
-    <div style="background:var(--accent-soft);border-radius:16px;padding:18px 16px;border:1px solid rgba(232,99,74,.2)">
-      <div id="home-streak" style="font-size:32px;font-weight:800;color:var(--accent)">0 🔥</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">dag streak</div>
+
+  <!-- Stat kaarten: streak + geleerd -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="background:var(--card);border-radius:16px;padding:16px 14px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">
+      <div id="home-streak" style="font-size:26px;font-weight:800;color:var(--accent)">0 🔥</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;font-weight:500">dag streak</div>
     </div>
-    <div style="background:var(--green-soft);border-radius:16px;padding:18px 16px;border:1px solid rgba(46,173,109,.2)">
-      <div id="home-mastered" style="font-size:32px;font-weight:800;color:var(--green)">0</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px">woorden geleerd</div>
+    <div style="background:var(--card);border-radius:16px;padding:16px 14px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">
+      <div id="home-mastered" style="font-size:26px;font-weight:800;color:var(--green)">0</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;font-weight:500">woorden geleerd</div>
     </div>
   </div>
-  <div id="daily-goal-card" style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:22px 20px;margin-bottom:24px;border:1px solid var(--border);position:relative;overflow:hidden">
-    <div style="position:absolute;top:-20px;right:-20px;font-size:80px;opacity:.06" id="daily-goal-icon">🎯</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <div style="font-size:14px;color:var(--text-muted)">Doel vandaag</div>
-      <div id="daily-goal-badge" style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px"></div>
-    </div>
-    <div style="font-size:32px;font-weight:800;margin-bottom:8px"><span id="daily-done">0</span><span style="font-size:18px;color:var(--text-muted);font-weight:500">/<span id="daily-target">20</span></span></div>
-    <div class="progress-bar"><div id="daily-bar" class="progress-bar-fill" style="width:0"></div></div>
-    <div id="daily-msg" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
+
+  <!-- CTA kaart: dominante terracotta -->
+  <div id="smart-cta-card" style="background:var(--accent);border-radius:22px;padding:22px 20px;margin-bottom:14px;box-shadow:0 12px 26px rgba(199,73,47,.28);position:relative;overflow:hidden">
+    <div style="position:absolute;top:-16px;right:-16px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.08)"></div>
+    <div style="position:absolute;bottom:-24px;left:-10px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.06)"></div>
+    <div id="cta-info" style="font-size:13px;color:rgba(255,255,255,.8);margin-bottom:14px;font-weight:500;position:relative"></div>
+    <button onclick="startSession('smart')" style="width:100%;padding:14px;border-radius:14px;background:white;color:var(--accent);font-size:17px;font-weight:800;border:none;cursor:pointer;transition:opacity .15s;position:relative" onmousedown="this.style.opacity='.9'" onmouseup="this.style.opacity='1'">Oefen nu →</button>
+    <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:10px;position:relative">app kiest de slimme mix voor je · <span id="cta-time">~6 min</span></div>
   </div>
-  <div id="due-info" style="display:none;align-items:center;gap:10px;padding:12px 16px;margin-bottom:16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);font-size:13px;color:var(--text-muted)">
-    <span style="font-size:18px">🔁</span> <span><strong id="due-count" style="color:var(--text)">0</strong> woorden wachten op herhaling</span>
-  </div>
-  <div id="home-cats" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:20px;padding-bottom:4px"></div>
-  <div style="display:flex;flex-direction:column;gap:12px">
-    <button id="btn-flash" class="big-btn" onclick="startSession('flashcard')" style="background:linear-gradient(135deg,var(--accent),#D4543E)">
-      <span style="font-size:20px">🃏</span>
-      <div><div style="font-size:16px;font-weight:700">Flashcards</div><div style="font-size:12px;opacity:.8">~10 woorden · herken & flip</div></div>
+
+  <!-- Niveau-voortgangskaart -->
+  <div id="level-progress-card" style="background:var(--card);border-radius:20px;padding:18px 18px;margin-bottom:14px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)"></div>
+
+  <!-- Categorie pills -->
+  <div id="home-cats" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:16px;padding-bottom:2px"></div>
+
+  <!-- Secundaire modi: 2×2 grid -->
+  <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Of kies zelf een modus</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <button id="btn-flash" class="big-btn" onclick="startSession('flashcard')" style="background:var(--accent);flex-direction:column;gap:6px;align-items:flex-start;padding:16px">
+      <span style="font-size:18px">○</span>
+      <div><div style="font-size:14px;font-weight:700">Flashcards</div><div id="btn-flash-sub" style="font-size:11px;opacity:.8">herken & flip</div></div>
     </button>
-    <button id="btn-type" class="big-btn" onclick="startSession('type')" style="background:linear-gradient(135deg,var(--purple),#6247E5)">
-      <span style="font-size:20px">⌨️</span>
-      <div><div style="font-size:16px;font-weight:700">Typ het antwoord</div><div style="font-size:12px;opacity:.8">~10 woorden · actiever leren</div></div>
+    <button id="btn-type" class="big-btn" onclick="startSession('type')" style="background:#4A7B9D;flex-direction:column;gap:6px;align-items:flex-start;padding:16px">
+      <span style="font-size:18px">⌨</span>
+      <div><div style="font-size:14px;font-weight:700">Typen</div><div id="btn-type-sub" style="font-size:11px;opacity:.8">actief leren</div></div>
     </button>
-    <button id="btn-listen" class="big-btn" onclick="startSession('listen')" style="background:linear-gradient(135deg,var(--blue),#3A7BC8)">
-      <span style="font-size:20px">🎧</span>
-      <div><div style="font-size:16px;font-weight:700">Luisteren</div><div style="font-size:12px;opacity:.8">~10 woorden · hoor & vertaal</div></div>
+    <button id="btn-listen" class="big-btn" onclick="startSession('listen')" style="background:var(--blue);flex-direction:column;gap:6px;align-items:flex-start;padding:16px">
+      <span style="font-size:18px">♪</span>
+      <div><div style="font-size:14px;font-weight:700">Luisteren</div><div id="btn-listen-sub" style="font-size:11px;opacity:.8">hoor & vertaal</div></div>
     </button>
-    <button id="btn-sentence" class="big-btn" onclick="startSession('sentence')" style="background:linear-gradient(135deg,#2EAD6D,#1A8552)">
-      <span style="font-size:20px">💬</span>
-      <div><div style="font-size:16px;font-weight:700">Zinnen</div><div style="font-size:12px;opacity:.8">~10 zinnen · type in het Pools</div></div>
+    <button id="btn-sentence" class="big-btn" onclick="startSession('sentence')" style="background:var(--green);flex-direction:column;gap:6px;align-items:flex-start;padding:16px">
+      <span style="font-size:18px">←</span>
+      <div><div style="font-size:14px;font-weight:700">Zinnen</div><div id="btn-sentence-sub" style="font-size:11px;opacity:.8">typ in het Pools</div></div>
     </button>
-  </div>
-  <div style="margin-top:24px;padding:16px 18px;background:var(--surface);border-radius:14px;border:1px solid var(--border);font-size:13px;color:var(--text-muted);line-height:1.6">
-    💡 <strong style="color:var(--text)">Tip:</strong> Mix de modi. Flashcards voor herkenning, typen voor actief gebruik, luisteren voor uitspraak, zinnen voor echte gesprekken.
   </div>
 </div>
 
 <!-- SESSION -->
 <div id="session" class="screen">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-    <button class="icon-btn" onclick="endSession()" style="font-size:14px">✕</button>
-    <div style="flex:1;margin:0 16px"><div class="progress-bar"><div id="sess-bar" class="progress-bar-fill" style="background:linear-gradient(90deg,var(--accent),var(--yellow));width:0"></div></div></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <button class="icon-btn" onclick="endSession()" style="font-size:13px;font-weight:700;color:var(--text-muted)">✕</button>
+    <div style="flex:1;margin:0 14px">
+      <div class="progress-bar"><div id="sess-bar" class="progress-bar-fill" style="background:var(--accent);width:0"></div></div>
+    </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <button id="btn-silent-sess" onclick="toggleSilentMode()" style="background:none;border:none;font-size:18px;cursor:pointer;padding:4px;line-height:1" title="Stille modus aan/uit">🔊</button>
-      <div id="sess-count" style="font-size:14px;color:var(--text-muted);font-family:var(--mono)">1/10</div>
+      <button id="btn-silent-sess" onclick="toggleSilentMode()" style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;line-height:1;color:var(--text-muted)" title="Stille modus aan/uit">♪</button>
+      <div id="sess-count" style="font-size:13px;color:var(--text-muted);font-family:var(--mono);font-weight:600">1/10</div>
     </div>
   </div>
-  <div id="sess-direction" style="text-align:center;margin-bottom:12px"></div>
-  <div id="sess-retry-banner" style="display:none;text-align:center;margin-bottom:12px"><span style="font-size:11px;color:var(--yellow);background:rgba(230,168,23,.1);padding:4px 12px;border-radius:20px;font-weight:600">🔁 Herhalingsronde</span></div>
+  <div id="sess-direction" style="text-align:center;margin-bottom:14px"></div>
+  <div id="sess-retry-banner" style="display:none;text-align:center;margin-bottom:12px"><span style="font-size:11px;color:var(--yellow);background:rgba(230,168,23,.1);padding:4px 14px;border-radius:20px;font-weight:700;border:1px solid rgba(230,168,23,.2)">↺ Herhalingsronde</span></div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;min-height:60vh">
-    <div id="sess-card" style="background:var(--card);border-radius:24px;padding:40px 28px;text-align:center;border:1px solid var(--border);position:relative;min-height:240px;display:flex;flex-direction:column;justify-content:center" onclick="handleCardTap()">
-      <div id="sess-cat-badge" style="position:absolute;top:16px;left:18px;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600"></div>
-      <div id="sess-diff" style="position:absolute;top:16px;right:18px;display:flex;gap:3px"></div>
-      <div id="sess-question" style="font-size:32px;font-weight:800;letter-spacing:-.5px"></div>
-      <div id="sess-tap-hint" style="font-size:14px;color:var(--text-muted);margin-top:12px">tap om te zien</div>
-      <div id="sess-speak-btn" style="display:none;margin-top:14px"><button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:14px;padding:10px 22px;font-size:20px;cursor:pointer">🔊</button></div>
+    <div id="sess-card" class="sess-card-shadow" style="background:var(--card);border-radius:24px;padding:36px 24px;text-align:center;border:1px solid var(--border);position:relative;min-height:240px;display:flex;flex-direction:column;justify-content:center" onclick="handleCardTap()">
+      <div id="sess-cat-badge" style="position:absolute;top:14px;left:16px;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700"></div>
+      <div id="sess-diff" style="position:absolute;top:16px;right:16px;display:flex;gap:4px"></div>
+      <div id="sess-question" style="font-size:32px;font-weight:800;letter-spacing:-.5px;color:var(--text)"></div>
+      <div id="sess-tap-hint" style="font-size:13px;color:var(--text-muted);margin-top:12px;font-weight:500">tap om te zien</div>
+      <div id="sess-speak-btn" style="display:none;margin-top:16px"><button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.1);border:1.5px solid rgba(74,144,217,.3);color:var(--blue);border-radius:50%;width:52px;height:52px;font-size:20px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center">♪</button></div>
       <div id="sess-answer-area" style="display:none"></div>
       <div id="sess-type-area" style="display:none;margin-top:20px"></div>
       <div id="sess-info-area" style="display:none"></div>
     </div>
-    <div id="sess-flash-btns" style="display:none;gap:12px;margin-top:24px" class="anim-slide">
-      <button class="answer-btn" onclick="handleAnswer(false)" style="background:var(--red-soft);color:var(--red);border:2px solid rgba(229,83,75,.2)">
-        <span style="font-size:22px">✗</span><span>Wist ik niet</span>
+    <div id="sess-flash-btns" style="display:none;gap:10px;margin-top:16px" class="anim-slide">
+      <button class="answer-btn" onclick="handleAnswer(false)" style="background:var(--red-soft);color:var(--red);border:1.5px solid rgba(200,85,75,.25)">
+        <span style="font-size:20px">✗</span><span>Wist ik niet</span>
       </button>
-      <button class="answer-btn" onclick="handleAnswer(true)" style="background:var(--green-soft);color:var(--green);border:2px solid rgba(46,173,109,.2)">
-        <span style="font-size:22px">✓</span><span>Wist ik!</span>
+      <button class="answer-btn" onclick="handleAnswer(true)" style="background:var(--green);color:white;border:none">
+        <span style="font-size:20px">✓</span><span>Wist ik!</span>
       </button>
     </div>
   </div>
 </div>
 
 <!-- RESULT -->
-<div id="result" class="screen" style="text-align:center;padding-top:40px">
-  <div id="res-emoji" style="font-size:60px;margin-bottom:16px"></div>
-  <div style="font-size:28px;font-weight:800;margin-bottom:8px">Sessie klaar!</div>
-  <div id="res-score-text" style="font-size:16px;color:var(--text-muted);margin-bottom:32px"></div>
-  <div style="position:relative;width:140px;height:140px;margin:0 auto 32px">
-    <svg width="140" height="140" viewBox="0 0 140 140">
-      <circle cx="70" cy="70" r="60" fill="none" stroke="var(--surface)" stroke-width="10"/>
-      <circle id="res-ring" cx="70" cy="70" r="60" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 377" transform="rotate(-90 70 70)" style="transition:stroke-dasharray 1s ease"/>
+<div id="result" class="screen" style="text-align:center;padding-top:32px">
+  <div id="res-encourage" style="font-size:15px;font-weight:600;color:var(--text-muted);margin-bottom:6px"></div>
+  <div style="font-size:26px;font-weight:800;margin-bottom:4px">Sessie klaar!</div>
+  <div id="res-score-text" style="font-size:14px;color:var(--text-muted);margin-bottom:24px"></div>
+  <div style="position:relative;width:150px;height:150px;margin:0 auto 24px">
+    <svg width="150" height="150" viewBox="0 0 150 150">
+      <circle cx="75" cy="75" r="62" fill="none" stroke="var(--border)" stroke-width="11"/>
+      <circle id="res-ring" cx="75" cy="75" r="62" fill="none" stroke="var(--accent)" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 390" transform="rotate(-90 75 75)" style="transition:stroke-dasharray 1.2s ease"/>
     </svg>
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div id="res-pct" style="font-size:32px;font-weight:800"></div></div>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div id="res-pct" style="font-size:34px;font-weight:800;font-family:var(--mono);color:var(--text)"></div>
+      <div id="res-pct-sub" style="font-size:11px;color:var(--text-muted);font-weight:600"></div>
+    </div>
   </div>
-  <div id="res-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px"></div>
-  <div id="res-level-up" style="display:none;border-radius:16px;padding:16px 20px;margin-bottom:16px;border:1px solid;text-align:left"></div>
-  <div id="res-new-words" style="display:none;background:var(--accent-soft);border-radius:16px;padding:16px 20px;margin-bottom:24px;border:1px solid rgba(232,99,74,.2);text-align:left"></div>
-  <div id="res-daily" style="background:var(--surface);border-radius:16px;padding:16px 20px;margin-bottom:24px;border:1px solid var(--border);text-align:left"></div>
+  <div id="res-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px"></div>
+  <div id="res-level-up" style="display:none;border-radius:16px;padding:16px 20px;margin-bottom:14px;border:1px solid;text-align:left"></div>
+  <div id="res-new-words" style="display:none;background:var(--accent-soft);border-radius:16px;padding:16px 20px;margin-bottom:14px;border:1px solid rgba(217,84,59,.2);text-align:left"></div>
+  <div id="res-daily" style="background:var(--card);border-radius:16px;padding:16px 20px;margin-bottom:20px;border:1px solid var(--border);text-align:left;box-shadow:0 4px 12px rgba(120,90,60,.05)"></div>
   <button id="res-btn" class="big-btn" style="justify-content:center;width:100%" onclick="showScreen('home')"></button>
 </div>
 
 <!-- PROGRESS -->
 <div id="progress" class="screen">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
-    <button class="icon-btn" onclick="showScreen('home')">←</button>
-    <div style="font-size:22px;font-weight:800">Voortgang</div>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+    <button class="icon-btn" onclick="showScreen('home')" style="font-size:15px;font-weight:700">←</button>
+    <div style="font-size:20px;font-weight:800">Voortgang</div>
   </div>
   <div id="prog-content"></div>
 </div>
@@ -239,36 +252,36 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 <!-- WORDS -->
 <div id="words" class="screen">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-    <button class="icon-btn" onclick="showScreen('home')">←</button>
-    <div style="font-size:22px;font-weight:800">Woordenlijst</div>
+    <button class="icon-btn" onclick="showScreen('home')" style="font-size:15px;font-weight:700">←</button>
+    <div style="font-size:20px;font-weight:800">Woordenlijst</div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-      <div id="words-count" style="font-size:13px;color:var(--text-muted)"></div>
-      <button class="icon-btn" onclick="showScreen('manage-words');renderManageWords()" title="Eigen woorden beheren" style="font-size:15px">✏️</button>
+      <div id="words-count" style="font-size:12px;color:var(--text-muted);font-weight:600"></div>
+      <button class="icon-btn" onclick="showScreen('manage-words');renderManageWords()" title="Eigen woorden beheren" style="font-size:14px;font-weight:700">+</button>
     </div>
   </div>
   <div style="position:relative;margin-bottom:12px">
-    <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none">🔍</span>
+    <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;font-size:14px">⌕</span>
     <input id="words-search" type="text" placeholder="Zoeken op woord, vertaling, zin..." autocomplete="off" autocorrect="off" spellcheck="false"
-      style="width:100%;padding:12px 14px 12px 42px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)"
+      style="width:100%;padding:12px 14px 12px 40px;border-radius:14px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font);box-shadow:0 2px 8px rgba(120,90,60,.04)"
       oninput="wordsSearch=this.value;renderWords()">
   </div>
-  <div id="words-cats" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px"></div>
+  <div id="words-cats" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px"></div>
   <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px">
-    <select id="words-status-sel" onchange="wordsStatus=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;flex-shrink:0">
+    <select id="words-status-sel" onchange="wordsStatus=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:12px;flex-shrink:0;font-weight:500">
       <option value="all">Alle</option>
       <option value="new">Nieuw</option>
       <option value="learning">Aan het leren</option>
       <option value="learned">Geleerd</option>
       <option value="problem">Probleemwoorden</option>
     </select>
-    <select id="words-level-sel" onchange="wordsLevel=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;flex-shrink:0">
+    <select id="words-level-sel" onchange="wordsLevel=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:12px;flex-shrink:0;font-weight:500">
       <option value="all">Alle niveaus</option>
       <option value="A0">A0</option>
       <option value="A1">A1</option>
       <option value="A2">A2</option>
       <option value="B1">B1</option>
     </select>
-    <select id="words-sort-sel" onchange="wordsSort=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;flex-shrink:0">
+    <select id="words-sort-sel" onchange="wordsSort=this.value;renderWords()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:12px;flex-shrink:0;font-weight:500">
       <option value="box-asc">Laagste box</option>
       <option value="misses-desc">Meeste fouten</option>
       <option value="pd-desc">Moeilijkste eerst</option>
@@ -301,26 +314,26 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
   <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:28px">
     <div>
       <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Pools *</div>
-      <input id="wf-pl" type="text" placeholder="Pools woord of frase" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)">
+      <input id="wf-pl" type="text" placeholder="Pools woord of frase" autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)">
     </div>
     <div>
       <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Nederlands *</div>
-      <input id="wf-nl" type="text" placeholder="Nederlandse vertaling" autocorrect="off" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)">
+      <input id="wf-nl" type="text" placeholder="Nederlandse vertaling" autocorrect="off" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:15px;font-family:var(--font)">
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div>
         <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Categorie</div>
-        <select id="wf-cat" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
-          <option value="familie">👨‍👩‍👧‍👦 Familie</option>
-          <option value="dagelijks">🏠 Dagelijks</option>
-          <option value="meningen">💬 Meningen</option>
-          <option value="reizen">✈️ Reizen</option>
-          <option value="eten">🍽️ Eten</option>
+        <select id="wf-cat" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+          <option value="familie">Familie</option>
+          <option value="dagelijks">Dagelijks</option>
+          <option value="meningen">Meningen</option>
+          <option value="reizen">Reizen</option>
+          <option value="eten">Eten</option>
         </select>
       </div>
       <div>
         <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Niveau</div>
-        <select id="wf-level" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+        <select id="wf-level" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
           <option value="A0">A0</option>
           <option value="A1" selected>A1</option>
           <option value="A2">A2</option>
@@ -331,7 +344,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div>
         <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Moeilijkheid</div>
-        <select id="wf-diff" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+        <select id="wf-diff" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
           <option value="1">1 — Makkelijk</option>
           <option value="2" selected>2 — Gemiddeld</option>
           <option value="3">3 — Moeilijk</option>
@@ -339,7 +352,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       </div>
       <div>
         <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Type</div>
-        <select id="wf-type" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+        <select id="wf-type" style="width:100%;padding:12px 14px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
           <option value="word" selected>Woord</option>
           <option value="phrase">Frase</option>
           <option value="sentence">Zin</option>
@@ -349,19 +362,19 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     </div>
     <div>
       <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Voorbeeldzin Pools</div>
-      <input id="wf-ex-pl" type="text" placeholder="Bijv. Nie rozumiem..." autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+      <input id="wf-ex-pl" type="text" placeholder="Bijv. Nie rozumiem..." autocorrect="off" autocapitalize="off" spellcheck="false" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
     </div>
     <div>
       <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Voorbeeldzin Nederlands</div>
-      <input id="wf-ex-nl" type="text" placeholder="Bijv. Ik begrijp het niet..." style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+      <input id="wf-ex-nl" type="text" placeholder="Bijv. Ik begrijp het niet..." style="width:100%;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
     </div>
     <div>
       <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Grammaticatip</div>
-      <input id="wf-gram" type="text" placeholder="Optionele grammaticatip..." style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+      <input id="wf-gram" type="text" placeholder="Optionele grammaticatip..." style="width:100%;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
     </div>
     <div>
       <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Tags (kommagescheiden)</div>
-      <input id="wf-tags" type="text" placeholder="Bijv. familie, groeten" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
+      <input id="wf-tags" type="text" placeholder="Bijv. familie, groeten" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:14px;font-family:var(--font)">
     </div>
   </div>
   <button onclick="saveWordForm()" class="big-btn" style="justify-content:center;width:100%;background:linear-gradient(135deg,var(--accent),#D4543E)">
@@ -374,29 +387,29 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 
 <!-- SETTINGS -->
 <div id="settings" class="screen">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
-    <button class="icon-btn" onclick="saveSettings();showScreen('home')">←</button>
-    <div style="font-size:22px;font-weight:800">Instellingen</div>
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+    <button class="icon-btn" onclick="saveSettings();showScreen('home')" style="font-size:15px;font-weight:700">←</button>
+    <div style="font-size:20px;font-weight:800">Instellingen</div>
   </div>
   <div class="settings-section">
-    <div class="settings-section-title">🎯 Leerdoelen</div>
+    <div class="settings-section-title">Leerdoelen</div>
     <div class="setting-row">
       <div><div class="label">Dagelijks doel</div><div class="sublabel">Woorden per dag</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <input type="range" id="set-daily" min="5" max="50" step="5" value="20" oninput="document.getElementById('set-daily-val').textContent=this.value">
-        <span id="set-daily-val" style="font-family:var(--mono);font-size:14px;min-width:24px;text-align:right">20</span>
+        <span id="set-daily-val" style="font-family:var(--mono);font-size:14px;min-width:28px;text-align:right;font-weight:600">20</span>
       </div>
     </div>
     <div class="setting-row">
       <div><div class="label">Sessiegrootte</div><div class="sublabel">Woorden per sessie</div></div>
       <div style="display:flex;align-items:center;gap:10px">
         <input type="range" id="set-session" min="5" max="20" step="1" value="10" oninput="document.getElementById('set-session-val').textContent=this.value">
-        <span id="set-session-val" style="font-family:var(--mono);font-size:14px;min-width:24px;text-align:right">10</span>
+        <span id="set-session-val" style="font-family:var(--mono);font-size:14px;min-width:28px;text-align:right;font-weight:600">10</span>
       </div>
     </div>
   </div>
   <div class="settings-section">
-    <div class="settings-section-title">🃏 Oefenmodus</div>
+    <div class="settings-section-title">Oefenmodus</div>
     <div class="setting-row">
       <div><div class="label">Richting</div><div class="sublabel">Hoe woorden worden getoond</div></div>
       <select id="set-direction" style="min-width:130px">
@@ -430,41 +443,41 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <div><div class="label">Automatische uitspraak</div><div class="sublabel">Speelt Pools af bij elke kaart</div></div>
       <div id="set-speak" class="toggle on" onclick="toggleSetting(this)"></div>
     </div>
-    <div id="voice-status-row" style="padding:4px 0 8px;font-size:12px;color:var(--text-muted)"></div>
+    <div id="voice-status-row" style="padding:4px 0 10px;font-size:12px;color:var(--text-muted)"></div>
   </div>
   <div class="settings-section">
-    <div class="settings-section-title">🔔 Herinneringen</div>
+    <div class="settings-section-title">Herinneringen</div>
     <div class="setting-row">
-      <div><div class="label">Dagelijkse reminder</div><div class="sublabel">Alleen als Safari open is</div></div>
+      <div><div class="label">Dagelijkse reminder</div><div class="sublabel">Pushmelding op ingesteld tijdstip</div></div>
       <div id="set-remind" class="toggle" onclick="toggleReminder(this)"></div>
     </div>
     <div id="remind-time-row" class="setting-row" style="display:none">
       <div><div class="label">Tijdstip</div></div>
-      <input type="time" id="set-remind-time" value="20:00" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px;font-family:var(--font)">
+      <input type="time" id="set-remind-time" value="20:00" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:7px 10px;font-size:14px;font-family:var(--font)">
     </div>
-    <div id="remind-status" style="font-size:12px;color:var(--text-muted);margin-top:8px;padding:0 2px;line-height:1.6"></div>
+    <div id="remind-status" style="font-size:12px;color:var(--text-muted);padding:4px 0 12px;line-height:1.6"></div>
   </div>
   <div class="settings-section">
-    <div class="settings-section-title">💾 Data</div>
+    <div class="settings-section-title">Account & Sync</div>
+    <div id="auth-settings"></div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-section-title">Data</div>
     <div class="setting-row">
       <div><div class="label">Voortgang exporteren</div><div class="sublabel">Download als JSON</div></div>
       <button onclick="exportData()" class="data-btn" style="background:var(--accent-soft);color:var(--accent)">Exporteer</button>
     </div>
     <div class="setting-row">
       <div><div class="label">Voortgang importeren</div><div class="sublabel">Laad eerder export</div></div>
-      <button onclick="document.getElementById('import-file').click()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue)">Importeer</button>
+      <button onclick="document.getElementById('import-file').click()" class="data-btn" style="background:rgba(74,144,217,.1);color:var(--blue)">Importeer</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
     </div>
-    <div class="setting-row" style="border:none">
+    <div class="setting-row">
       <div><div class="label" style="color:var(--red)">Alle voortgang resetten</div><div class="sublabel">Kan niet ongedaan worden</div></div>
       <button onclick="resetAllData()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Reset</button>
     </div>
   </div>
-  <div class="settings-section">
-    <div class="settings-section-title">☁️ Account & Sync</div>
-    <div id="auth-settings"></div>
-  </div>
-  <div style="text-align:center;padding:16px;font-size:11px;color:var(--text-dim)">Polski Leraar v4.4</div>
+  <div style="text-align:center;padding:16px 0 8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)">Polski Leraar v5.0</div>
 </div>
 
 <script>
@@ -474,7 +487,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 const CATEGORIES = {
   familie: { label:'Familie', emoji:'👨‍👩‍👧‍👦', color:'#E8634A' },
   dagelijks: { label:'Dagelijks', emoji:'🏠', color:'#4A90D9' },
-  meningen: { label:'Meningen', emoji:'💬', color:'#7B61FF' },
+  meningen: { label:'Meningen', emoji:'💬', color:'#4A90D9' },
   reizen: { label:'Reizen', emoji:'✈️', color:'#2EAD6D' },
   eten: { label:'Eten', emoji:'🍽️', color:'#E6A817' },
 };
@@ -650,7 +663,7 @@ const LEVEL = {
     var progress = nextT ? Math.min(100, Math.round(mastered/nextT.mastered*100)) : 100;
     var progressLabel = next
       ? mastered+'/'+nextT.mastered+' woorden geleerd voor '+next.code
-      : '🏆 Hoogste niveau bereikt!';
+      : 'Hoogste niveau bereikt!';
 
     return Object.assign({}, def, {
       progress: progress, progressLabel: progressLabel,
@@ -783,12 +796,12 @@ function toggleSilentMode() {
 
 function updateSilentButtons() {
   var silent = !settings.autoSpeak;
-  var icon  = silent ? '🔇' : '🔊';
   var title = silent ? 'Stille modus aan — klik voor geluid' : 'Geluid aan — klik voor stille modus';
   ['btn-silent-home', 'btn-silent-sess'].forEach(function(id) {
     var el = document.getElementById(id); if (!el) return;
-    el.textContent = icon; el.title = title;
-    el.style.opacity = silent ? '0.6' : '1';
+    el.innerHTML = silent ? '<span style="text-decoration:line-through;opacity:.5">♪</span>' : '♪';
+    el.title = title;
+    el.style.opacity = '1';
   });
 }
 
@@ -797,66 +810,76 @@ function updateSilentButtons() {
 // ═══════════════════════════════════════
 function renderHome() {
   var lvl = LEVEL.compute();
-  document.getElementById('home-level').innerHTML = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:'+lvl.color+'22;color:'+lvl.color+'">'+lvl.code+' · '+lvl.label+'</span>';
   updateSyncBadge();
   updateSilentButtons();
-  const mastered = cards.filter(c => c.box >= 3).length;
+
+  // Niveau-badge in header
+  var lvlColors = {A0:'#A8917A',A1:'#4A90D9',A2:'#1F9D62',B1:'#D9543B'};
+  var lvlColor = lvlColors[lvl.code] || '#A8917A';
+  document.getElementById('home-level').innerHTML = '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;background:'+lvlColor+'18;color:'+lvlColor+'">'+lvl.code+'</span>';
+
+  const mastered = cards.filter(function(c){return c.box >= 3;}).length;
   const due = getDueCards().length;
   const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
   const goal = settings.dailyGoal;
   const reached = done >= goal;
+  const sz = settings.sessionSize || 10;
 
+  // Stat kaarten
   document.getElementById('home-streak').textContent = stats.streak + ' 🔥';
   document.getElementById('home-mastered').textContent = mastered;
-  document.getElementById('daily-done').textContent = done;
-  document.getElementById('daily-target').textContent = goal;
-  document.getElementById('daily-bar').style.width = Math.min(done/goal*100,100)+'%';
-  document.getElementById('daily-bar').style.background = reached ? 'linear-gradient(90deg,var(--green),#3DD68C)' : 'linear-gradient(90deg,var(--accent),var(--yellow))';
-  document.getElementById('daily-goal-card').style.borderColor = reached ? 'rgba(46,173,109,.3)' : 'var(--border)';
-  document.getElementById('daily-goal-icon').textContent = reached ? '✅' : '🎯';
 
-  const badge = document.getElementById('daily-goal-badge');
-  badge.textContent = reached ? '✓ Gehaald!' : (goal - done) + ' te gaan';
-  badge.style.background = reached ? 'var(--green-soft)' : 'var(--accent-soft)';
-  badge.style.color = reached ? 'var(--green)' : 'var(--accent)';
+  // CTA kaart vullen
+  var newCount = cards.filter(function(c){return c.reviews === 0 && isCardActive(c);}).length;
+  var ctaInfo = due > 0
+    ? due + ' woorden klaar voor herhaling' + (newCount > 0 ? ' · +' + Math.min(newCount, 3) + ' nieuw' : '')
+    : newCount > 0
+      ? newCount + ' nieuwe woorden beschikbaar'
+      : 'Alles herhaald! Blijf oefenen 🔥';
+  document.getElementById('cta-info').textContent = ctaInfo;
+  var estMin = Math.max(2, Math.round((Math.min(due + Math.min(newCount,3), sz)) * 0.5));
+  document.getElementById('cta-time').textContent = '~' + estMin + ' min';
 
-  const sessLeft = Math.ceil((goal-done)/settings.sessionSize);
-  document.getElementById('daily-msg').textContent = done === 0 ? 'Start je eerste sessie van vandaag!' : reached ? 'Top! Je kunt stoppen of bonuswoorden oefenen.' : 'Nog ' + sessLeft + ' sessie' + (sessLeft>1?'s':'') + ' van ~' + settings.sessionSize + ' woorden';
-
-  const dueEl = document.getElementById('due-info');
-  if (due > 0) { dueEl.style.display = 'flex'; document.getElementById('due-count').textContent = due; }
-  else { dueEl.style.display = 'none'; }
-
-  const bf = document.getElementById('btn-flash'), bt = document.getElementById('btn-type'), bl = document.getElementById('btn-listen'), bs = document.getElementById('btn-sentence');
-  var sz = settings.sessionSize || 10;
-  if (reached) {
-    bf.style.background = bt.style.background = bl.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
-    if (bs) bs.style.background = 'linear-gradient(135deg,var(--green),#1D8C55)';
-    bf.querySelector('div div:first-child').textContent = 'Bonus Flashcards';
-    bt.querySelector('div div:first-child').textContent = 'Bonus Typen';
-    bl.querySelector('div div:first-child').textContent = 'Bonus Luisteren';
-    if (bs) bs.querySelector('div div:first-child').textContent = 'Bonus Zinnen';
+  // Niveau-voortgangskaart
+  var req = getNextLevelRequirements();
+  var progCard = document.getElementById('level-progress-card');
+  if (req) {
+    var reqLvlColor = lvlColors[req.nextLevel] || '#D9543B';
+    var progressPct = Math.min(100, Math.round(lvl.mastered / req.requirements[0].target * 100));
+    var concreteNeeds = [];
+    req.requirements.forEach(function(r){
+      if (!r.done) {
+        if (r.lowerIsBetter) concreteNeeds.push('foutrate naar ≤'+r.target+'%');
+        else if (r.label === 'Geleerde woorden') concreteNeeds.push('nog '+(r.target-r.current)+' woorden leren');
+        else if (r.label === 'Gemiddelde box') concreteNeeds.push('gem. box naar '+r.target);
+      }
+    });
+    var needText = concreteNeeds.length ? concreteNeeds.slice(0,2).join(' · ') : 'Bijna klaar voor '+req.nextLevel+'!';
+    progCard.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+lvl.code+' → '+req.nextLevel+'</div>'
+        +'<div style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:'+reqLvlColor+'18;color:'+reqLvlColor+'">'+req.nextLabel+'</div>'
+      +'</div>'
+      +'<div class="progress-bar" style="height:6px;margin-bottom:8px"><div class="progress-bar-fill" style="background:'+reqLvlColor+';width:'+progressPct+'%"></div></div>'
+      +'<div style="font-size:12px;color:var(--text-muted)">'+needText+'</div>';
   } else {
-    bf.style.background = 'linear-gradient(135deg,var(--accent),#D4543E)';
-    bt.style.background = 'linear-gradient(135deg,var(--purple),#6247E5)';
-    bl.style.background = 'linear-gradient(135deg,var(--blue),#3A7BC8)';
-    if (bs) bs.style.background = 'linear-gradient(135deg,#2EAD6D,#1A8552)';
-    bf.querySelector('div div:first-child').textContent = 'Flashcards';
-    bt.querySelector('div div:first-child').textContent = 'Typ het antwoord';
-    bl.querySelector('div div:first-child').textContent = 'Luisteren';
-    if (bs) bs.querySelector('div div:first-child').textContent = 'Zinnen';
+    progCard.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--accent)">Hoogste niveau bereikt!</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">'+lvl.code+' · '+lvl.label+'</div>';
   }
-  bf.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · herken & flip';
-  bt.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · actiever leren';
-  bl.querySelector('div div:last-child').textContent = '~' + sz + ' woorden · hoor & vertaal';
-  if (bs) bs.querySelector('div div:last-child').textContent = '~' + sz + ' zinnen · typ in het Pools';
+
+  // Modi knoppen (2×2 grid)
+  var bonusPrefix = reached ? 'Bonus ' : '';
+  document.getElementById('btn-flash-sub').textContent = '~'+sz+' · herken & flip';
+  document.getElementById('btn-type-sub').textContent  = '~'+sz+' · actief leren';
+  document.getElementById('btn-listen-sub').textContent = '~'+sz+' · hoor & vertaal';
+  document.getElementById('btn-sentence-sub').textContent = '~'+sz+' zinnen';
+
   renderCatPills('home-cats', selectedCat, function(c) { selectedCat = c; renderHome(); });
 }
 
 function renderCatPills(containerId, active, onClick) {
   var el = document.getElementById(containerId); el.innerHTML = '';
   var all = document.createElement('button'); all.className = 'pill' + (active==='all'?' active':''); all.textContent = 'Alles'; all.onclick = function(){onClick('all');}; el.appendChild(all);
-  Object.entries(CATEGORIES).forEach(function(e) { var b = document.createElement('button'); b.className = 'pill' + (active===e[0]?' active':''); b.textContent = e[1].emoji + ' ' + e[1].label; b.onclick = function(){onClick(e[0]);}; el.appendChild(b); });
+  Object.entries(CATEGORIES).forEach(function(e) { var b = document.createElement('button'); b.className = 'pill' + (active===e[0]?' active':''); b.textContent = e[1].label; b.onclick = function(){onClick(e[0]);}; el.appendChild(b); });
 }
 
 function getDueCards() {
@@ -884,7 +907,11 @@ function startSession(mode) {
     alert('Je hebt nog geen zinnen of frasen vrijgespeeld. Oefen meer flashcards — zinnen worden automatisch toegevoegd zodra je genoeg woorden kent.');
     return;
   }
-  var dir = mode === 'listen' ? 'pl-nl' : (mode === 'type' || mode === 'sentence') ? 'nl-pl' : getDir();
+  if (mode === 'smart' && sel.length === 0) {
+    alert('Geen woorden beschikbaar. Voeg woorden toe of reset je voortgang.');
+    return;
+  }
+  var dir = (mode === 'listen') ? 'pl-nl' : (mode === 'type' || mode === 'sentence') ? 'nl-pl' : (mode === 'smart') ? 'pl-nl' : getDir();
   sess = {cards:sel, idx:0, mode:mode, dir:dir, showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
   showScreen('session'); renderSessionCard();
 }
@@ -906,14 +933,17 @@ function buildSessionCards(mode) {
   var mix = settings.sessionMix || 'balanced';
   var sz  = settings.sessionSize || 10;
 
-  var isSentMode = mode === 'sentence';
+  var isSentMode  = mode === 'sentence';
+  var isSmartMode = mode === 'smart';
 
   var allActive = cards.filter(function(c){
     if (!isCardActive(c)) return false;
     if (selectedCat !== 'all' && c.cat !== selectedCat) return false;
     var t = getCardType(c);
     // Strikte scheiding: zinnen-modus = alleen sentence/pattern/phrase
+    //                   smart-modus   = alles (woorden + zinnen)
     //                   overige modi  = alleen word
+    if (isSmartMode) return true;
     if (isSentMode) return t === 'sentence' || t === 'pattern' || t === 'phrase';
     return t === 'word';
   });
@@ -1002,45 +1032,72 @@ function renderSessionCard() {
   var c = sess.cards[sess.idx]; if (!c) return;
   updateSilentButtons();
   var cat = CATEGORIES[c.cat]||{};
+  var isSmartMode = sess.mode === 'smart';
+  var isFlashcard = sess.mode === 'flashcard' || isSmartMode;
   document.getElementById('sess-bar').style.width = ((sess.idx+1)/sess.cards.length*100)+'%';
   document.getElementById('sess-count').textContent = (sess.idx+1)+'/'+sess.cards.length;
-  document.getElementById('sess-direction').innerHTML = '<span style="font-size:11px;color:var(--text-muted);background:var(--surface);padding:4px 12px;border-radius:20px;font-weight:500">'+(sess.dir==='pl-nl'?'🇵🇱 → 🇳🇱':'🇳🇱 → 🇵🇱')+'</span>';
-  document.getElementById('sess-retry-banner').style.display = sess.isRetry ? 'block' : 'none';
-  document.getElementById('sess-cat-badge').textContent = (cat.emoji||'')+ ' ' + (cat.label||'');
-  document.getElementById('sess-cat-badge').style.background = (cat.color||'#888') + '22';
-  document.getElementById('sess-cat-badge').style.color = cat.color||'#888';
-  document.getElementById('sess-diff').innerHTML = [1,2,3].map(function(d){return '<div style="width:6px;height:6px;border-radius:3px;background:'+(d<=c.diff?'var(--accent)':'var(--text-dim)')+'"></div>';}).join('');
-  // Luister-modus: verberg tekst, toon grote audioknop
+
+  // Richting-pill (warm/licht stijl via .dir-pill class)
   var isListen = sess.mode === 'listen';
+  var dirLabel = isListen ? '♪ Hoor &amp; vertaal' : isSmartMode ? 'Slimme mix' : sess.dir==='pl-nl' ? '🇵🇱 Pools → NL' : 'NL → Pools 🇵🇱';
+  document.getElementById('sess-direction').innerHTML = '<span class="dir-pill">'+dirLabel+'</span>';
+
+  document.getElementById('sess-retry-banner').style.display = sess.isRetry ? 'block' : 'none';
+  document.getElementById('sess-cat-badge').textContent = (cat.label||'');
+  document.getElementById('sess-cat-badge').style.background = (cat.color||'#D9543B') + '18';
+  document.getElementById('sess-cat-badge').style.color = cat.color||'#D9543B';
+  document.getElementById('sess-diff').innerHTML = [1,2,3].map(function(d){return '<div style="width:6px;height:6px;border-radius:50%;background:'+(d<=c.diff?'var(--accent)':'var(--border)')+'"></div>';}).join('');
+
+  // Luister-modus: verberg tekst, toon grote ronde audioknop
   if (isListen) {
-    document.getElementById('sess-direction').innerHTML = '<span style="font-size:11px;color:var(--text-muted);background:var(--surface);padding:4px 12px;border-radius:20px;font-weight:500">🎧 Hoor & vertaal</span>';
-    document.getElementById('sess-question').innerHTML = '<button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.12);border:2px solid rgba(74,144,217,.25);color:var(--blue);border-radius:20px;padding:20px 36px;font-size:52px;cursor:pointer">🔊</button>';
+    document.getElementById('sess-question').innerHTML = '<button onclick="speakCurrentCard();event.stopPropagation()" style="background:rgba(74,144,217,.1);border:2px solid rgba(74,144,217,.3);color:var(--blue);border-radius:50%;width:80px;height:80px;font-size:32px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center">♪</button>';
   } else {
     var qText = sess.dir==='pl-nl' ? c.pl : c.nl;
     var qEl = document.getElementById('sess-question');
     qEl.textContent = qText;
-    qEl.style.fontSize = qText.length > 60 ? '18px' : qText.length > 35 ? '22px' : '32px';
-    qEl.style.lineHeight = qText.length > 35 ? '1.4' : '1.2';
+    qEl.style.fontSize = qText.length > 60 ? '17px' : qText.length > 35 ? '22px' : '32px';
+    qEl.style.lineHeight = qText.length > 35 ? '1.5' : '1.2';
+    qEl.style.fontWeight = '800';
   }
-  document.getElementById('sess-tap-hint').style.display = sess.mode==='flashcard' ? 'block' : 'none';
+  document.getElementById('sess-tap-hint').style.display = isFlashcard ? 'block' : 'none';
 
-  // 🔊 replay-knop: alleen bij PL→NL flashcard (Pools is de vraag, nuttig om te herhalen)
-  // Bij NL→PL: de 🔊 knop verschijnt pas NA het tonen van het antwoord (in showAnswer)
+  // Audio replay-knop: bij PL→NL flashcard/smart (Pools is de vraag)
   var spkBtn = document.getElementById('sess-speak-btn');
-  spkBtn.style.display = (sess.mode === 'flashcard' && sess.dir === 'pl-nl') ? 'block' : 'none';
+  spkBtn.style.display = (isFlashcard && sess.dir === 'pl-nl') ? 'block' : 'none';
 
   document.getElementById('sess-answer-area').style.display = 'none'; document.getElementById('sess-answer-area').innerHTML = '';
   document.getElementById('sess-flash-btns').style.display = 'none';
   document.getElementById('sess-info-area').style.display = 'none'; document.getElementById('sess-info-area').innerHTML = '';
-  document.getElementById('sess-card').className = '';
+  document.getElementById('sess-card').className = 'sess-card-shadow';
   sess.showAnswer = false;
 
   var ta = document.getElementById('sess-type-area');
   var isSentenceMode = sess.mode === 'sentence';
-  if (sess.mode === 'type' || isListen || isSentenceMode) {
+  var needsInput = sess.mode === 'type' || isListen || isSentenceMode;
+  // Smart mode: sentence/phrase/pattern cards toon input, words toon flashcard
+  if (isSmartMode) {
+    var ct = getCardType(c);
+    needsInput = (ct === 'sentence' || ct === 'pattern' || ct === 'phrase');
+  }
+  if (needsInput) {
     var plHolder = isListen ? 'Typ in het Nederlands...' : isSentenceMode ? 'Typ de Poolse zin...' : 'Typ in het Pools...';
+    var needsPolishChars = !isListen; // Typ- en zinnen-modus: Poolse tekens nuttig
     ta.style.display = 'block';
-    ta.innerHTML = '<div style="display:flex;gap:8px"><input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+plHolder+'" style="flex:1;padding:14px 18px;border-radius:14px;background:var(--surface);border:2px solid var(--border);color:var(--text);font-size:16px"><button onclick="submitTyped()" style="padding:14px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button></div><button onclick="skipTyped()" style="margin-top:10px;width:100%;background:none;border:1px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px">Weet ik niet — toon antwoord</button>';
+    ta.innerHTML =
+      '<div style="display:flex;gap:8px;margin-bottom:8px">'
+        +'<input id="type-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="'+plHolder+'" '
+          +'style="flex:1;padding:13px 16px;border-radius:14px;background:var(--bg);border:2px solid var(--border);color:var(--text);font-size:16px;transition:border-color .15s"'
+          +' onfocus="this.style.borderColor=\'var(--accent)\'" onblur="this.style.borderColor=\'var(--border)\'">'
+        +'<button onclick="submitTyped()" style="padding:13px 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700;flex-shrink:0">→</button>'
+      +'</div>'
+      + (needsPolishChars
+          ? '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'
+              + ['ą','ć','ę','ł','ń','ó','ś','ź','ż'].map(function(ch){
+                  return '<button class="pl-char-btn" onclick="insertPolishChar(\''+ch+'\')" tabindex="-1">'+ch+'</button>';
+                }).join('')
+            + '</div>'
+          : '')
+      +'<button onclick="skipTyped()" style="width:100%;background:none;border:1.5px solid var(--border);border-radius:12px;padding:10px 16px;color:var(--text-muted);font-size:13px;font-weight:500">Weet ik niet — toon antwoord</button>';
     setTimeout(function(){ var inp = document.getElementById('type-input'); if(inp) { inp.focus(); inp.onkeydown = function(e){ if(e.key==='Enter'&&inp.value.trim()) submitTyped(); }; } }, 100);
   } else { ta.style.display = 'none'; ta.innerHTML = ''; }
 
@@ -1051,22 +1108,28 @@ function renderSessionCard() {
   }
 }
 
-function handleCardTap() { if (sess.mode !== 'flashcard' || sess.showAnswer) return; showAnswer(); }
+function handleCardTap() { if ((sess.mode !== 'flashcard' && sess.mode !== 'smart') || sess.showAnswer) return; showAnswer(); }
+
+function insertPolishChar(ch) {
+  var inp = document.getElementById('type-input'); if (!inp) return;
+  var s = inp.selectionStart, e = inp.selectionEnd;
+  inp.value = inp.value.slice(0,s) + ch + inp.value.slice(e);
+  inp.selectionStart = inp.selectionEnd = s + 1; inp.focus();
+}
 
 function showAnswer() {
   var c = sess.cards[sess.idx];
   sess.showAnswer = true;
   document.getElementById('sess-tap-hint').style.display = 'none';
-  document.getElementById('sess-speak-btn').style.display = 'none'; // verberg vraag-knop
+  document.getElementById('sess-speak-btn').style.display = 'none';
 
   var safePl = c.pl.replace(/'/g, "\\'");
   var aa = document.getElementById('sess-answer-area');
   aa.style.display = 'block';
-  // Altijd Pools prominent met 🔊, daarna Nederlandse vertaling
-  aa.innerHTML = '<div style="width:40px;height:2px;background:var(--accent);margin:16px auto;border-radius:1px"></div>'
+  aa.innerHTML = '<div style="width:32px;height:2px;background:var(--border);margin:14px auto;border-radius:1px"></div>'
     + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px">'
-    + '<div style="font-size:26px;font-weight:700;color:var(--accent)">'+c.pl+'</div>'
-    + '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:10px;padding:6px 12px;font-size:16px;cursor:pointer">🔊</button>'
+    + '<div style="font-size:28px;font-weight:800;color:var(--accent)">'+c.pl+'</div>'
+    + '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.1);border:1.5px solid rgba(74,144,217,.3);color:var(--blue);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center">♪</button>'
     + '</div>'
     + '<div style="font-size:15px;color:var(--text-muted)">'+c.nl+'</div>';
   aa.className = 'anim-slide';
@@ -1080,8 +1143,8 @@ function showAnswer() {
 
 function showInfoArea(c) {
   var ia = document.getElementById('sess-info-area'); ia.style.display = 'block'; var html = '';
-  if (settings.showExamples) html += '<div class="example-box" style="position:relative"><button onclick="speak(\''+c.ex_pl.replace(/'/g,"\\'")+'\')" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:16px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>';
-  if (settings.showGrammar && c.gram) html += '<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>';
+  if (settings.showExamples) html += '<div class="example-box" style="position:relative"><button onclick="speak(\''+c.ex_pl.replace(/'/g,"\\'")+'\')" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">♪</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>';
+  if (settings.showGrammar && c.gram) html += '<div class="grammar-box"><div class="title">Grammatica</div><div class="body">'+c.gram+'</div></div>';
   ia.innerHTML = html; ia.className = 'anim-slide';
 }
 
@@ -1109,23 +1172,22 @@ function skipTyped() { var c = sess.cards[sess.idx]; showTypedResult(false, sess
 
 function showTypedResult(correct, answer, c, typedInput, hint) {
   var isFuzzy = correct && typedInput;
-  var label = isFuzzy ? '≈ Bijna!' : correct ? '✓ Goed!' : '✗ Niet goed';
+  var label = isFuzzy ? '≈ Bijna goed!' : correct ? '✓ Goed!' : '✗ Niet goed';
+  var bgColor = isFuzzy ? 'rgba(230,168,23,.1)' : correct ? 'var(--green-soft)' : 'var(--red-soft)';
   var color = isFuzzy ? 'var(--yellow)' : correct ? 'var(--green)' : 'var(--red)';
   var safePl = c.pl.replace(/'/g, "\\'");
-  var speakBtn = '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.12);border:1px solid rgba(74,144,217,.25);color:var(--blue);border-radius:8px;padding:4px 10px;font-size:14px;cursor:pointer;margin-left:6px">🔊</button>';
-  var html = '<div style="font-size:20px;font-weight:700;color:'+color+'">'+label+'</div>';
-  if (hint && !correct) html += '<div style="font-size:12px;color:var(--yellow);margin-top:6px;padding:6px 10px;border-radius:8px;background:rgba(230,168,23,.1)">💡 '+hint+'</div>';
+  var speakBtn = '<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:rgba(74,144,217,.1);border:1.5px solid rgba(74,144,217,.3);color:var(--blue);border-radius:50%;width:32px;height:32px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:6px">♪</button>';
+  var html = '<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:20px;background:'+bgColor+';margin-bottom:10px"><span style="font-size:16px;font-weight:700;color:'+color+'">'+label+'</span></div>';
+  if (hint && !correct) html += '<div style="font-size:12px;color:var(--yellow);margin-bottom:8px;padding:6px 10px;border-radius:8px;background:rgba(230,168,23,.1);border:1px solid rgba(230,168,23,.2)">Let op Poolse tekens: ą ć ę ł ń ó ś ź ż</div>';
   if (typedInput) {
-    // Toon verschil: wat getypt vs wat goed is, met 🔊 bij het goede (Poolse) antwoord
-    html += '<div style="margin-top:12px;background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left">';
+    html += '<div style="margin-top:4px;background:var(--bg);border-radius:12px;padding:12px 14px;text-align:left;border:1px solid var(--border)">';
     html += '<div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Vergelijk</div>';
     html += '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px"><span style="font-size:10px;color:var(--red);font-weight:700;min-width:36px;text-transform:uppercase">Jij</span><span style="font-size:15px;font-family:var(--mono);color:var(--red)">'+typedInput+'</span></div>';
-    html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:10px;color:var(--green);font-weight:700;min-width:36px;text-transform:uppercase">Goed</span><span style="font-size:15px;font-family:var(--mono);color:var(--green)">'+answer+'</span>'+speakBtn+'</div>';
+    html += '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;color:var(--green);font-weight:700;min-width:36px;text-transform:uppercase">Goed</span><span style="font-size:15px;font-family:var(--mono);color:var(--green);flex:1">'+answer+'</span>'+speakBtn+'</div>';
     html += '</div>';
   } else {
-    // Correct of skip: toon Pools antwoord met 🔊
-    html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px">'
-      + '<div style="font-size:18px;color:var(--accent);font-weight:700">'+answer+'</div>'
+    html += '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px">'
+      + '<div style="font-size:20px;color:var(--accent);font-weight:800">'+answer+'</div>'
       + speakBtn + '</div>';
   }
   // Auto-uitspraak correct Pools antwoord
@@ -1133,7 +1195,7 @@ function showTypedResult(correct, answer, c, typedInput, hint) {
   document.getElementById('sess-type-area').innerHTML = html;
   showInfoArea(c);
   var btn = document.createElement('button'); btn.className = 'big-btn';
-  btn.style.cssText = 'margin-top:16px;justify-content:center;width:100%;background:linear-gradient(135deg,'+(correct?'var(--green),#1D8C55':'var(--accent),#D4543E')+')';
+  btn.style.cssText = 'margin-top:14px;justify-content:center;width:100%;background:'+(correct?'var(--green)':'var(--accent)');
   btn.innerHTML = '<span style="font-size:16px;font-weight:700">Volgende →</span>';
   btn.onclick = function(e) { e.stopPropagation(); handleAnswer(correct); };
   document.getElementById('sess-info-area').appendChild(btn);
@@ -1185,148 +1247,186 @@ function checkExpansion() {
 // ═══════════════════════════════════════
 function renderResult() {
   var pct = sess.totalCount ? Math.round(sess.correctCount / sess.totalCount * 100) : 0;
-  document.getElementById('res-emoji').textContent = pct >= 80 ? '🎉' : pct >= 50 ? '💪' : '📚';
+  var encourage = pct >= 90 ? 'Uitstekend!' : pct >= 70 ? 'Goed gedaan!' : pct >= 50 ? 'Blijf oefenen!' : 'Meer herhalen helpt!';
+  document.getElementById('res-encourage').textContent = encourage;
   document.getElementById('res-score-text').textContent = sess.correctCount + ' van ' + sess.totalCount + ' goed';
   document.getElementById('res-pct').textContent = pct + '%';
-  setTimeout(function(){ document.getElementById('res-ring').setAttribute('stroke-dasharray', (pct/100*377)+' 377'); }, 100);
+  document.getElementById('res-pct-sub').textContent = 'score';
+  var ringColor = pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('res-ring').setAttribute('stroke', ringColor);
+  setTimeout(function(){ document.getElementById('res-ring').setAttribute('stroke-dasharray', (pct/100*390)+' 390'); }, 100);
   var mastered = cards.filter(function(c){return c.box>=3;}).length;
-  document.getElementById('res-stats').innerHTML = '<div class="stat-box"><div class="val">'+stats.streak+'🔥</div><div class="label">Streak</div></div><div class="stat-box"><div class="val">'+mastered+'</div><div class="label">Geleerd</div></div><div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div>';
+  var sessionTime = Math.round(sess.totalCount * 0.5);
+  document.getElementById('res-stats').innerHTML =
+    '<div class="stat-box"><div class="val" style="color:var(--green)">'+sess.correctCount+'</div><div class="label">Goed</div></div>'
+    +'<div class="stat-box"><div class="val" style="color:var(--red)">'+(sess.totalCount-sess.correctCount)+'</div><div class="label">Fout</div></div>'
+    +'<div class="stat-box"><div class="val" style="font-family:var(--mono)">~'+sessionTime+'m</div><div class="label">Tijd</div></div>';
   var lu = document.getElementById('res-level-up');
   if (sess.levelUp) {
-    var luDef = LEVEL.DEFS.find(function(d){return d.code===sess.levelUp;})||{label:sess.levelUp,color:'var(--accent)',desc:''};
+    var lvlColors = {A0:'#A8917A',A1:'#4A90D9',A2:'#1F9D62',B1:'#D9543B'};
+    var luColor = lvlColors[sess.levelUp] || 'var(--accent)';
     var luMsg = {A1:'Je kent de basiswoorden!',A2:'Je kunt je uitdrukken!',B1:'Je kunt converseren!'}[sess.levelUp]||'';
-    lu.style.display='block'; lu.style.borderColor=luDef.color+'55'; lu.style.background=luDef.color+'18';
-    lu.innerHTML='<div style="font-size:15px;font-weight:800;color:'+luDef.color+';margin-bottom:4px">🎯 Niveau omhoog! Je bent nu '+sess.levelUp+'</div><div style="font-size:13px;color:var(--text-muted)">'+luDef.label+' — '+luMsg+'</div>';
+    lu.style.display='block'; lu.style.borderColor=luColor; lu.style.background=luColor+'18';
+    lu.innerHTML='<div style="font-size:14px;font-weight:800;color:'+luColor+';margin-bottom:4px">Niveau omhoog! Je bent nu '+sess.levelUp+'</div><div style="font-size:13px;color:var(--text-muted)">'+luMsg+'</div>';
   } else { lu.style.display='none'; }
   var nw = document.getElementById('res-new-words');
-  if (sess.newWords.length) { nw.style.display = 'block'; nw.innerHTML = '<div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:8px">✨ Nieuwe woorden toegevoegd!</div>' + sess.newWords.map(function(w){return '<div style="font-size:13px;margin-top:4px"><strong>'+w.pl+'</strong> — '+w.nl+'</div>';}).join(''); }
-  else { nw.style.display = 'none'; }
+  if (sess.newWords.length) {
+    nw.style.display = 'block';
+    nw.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px">+ '+sess.newWords.length+' nieuwe woorden ontgrendeld</div>'
+      + sess.newWords.map(function(w){return '<div style="font-size:12px;margin-top:5px;display:flex;gap:6px"><strong style="color:var(--text)">'+w.pl+'</strong><span style="color:var(--text-muted)">'+w.nl+'</span></div>';}).join('');
+  } else { nw.style.display = 'none'; }
   // Moeilijkste woorden uit deze sessie
   var sessionIds = new Set(sess.cards.map(function(c){return c.id;}));
   var hardInSession = Array.from(sessionIds).map(function(id){ return cards.find(function(c){return c.id===id;}); })
     .filter(function(c){ return c && (c.misses||0)>=1 && personalDiff(c)>=0.3; })
     .sort(function(a,b){ return personalDiff(b)-personalDiff(a); }).slice(0,3);
-  var hwEl = document.getElementById('res-new-words').nextElementSibling;
-  // Voeg moeilijkste woorden toe na dagdoel-sectie indien aanwezig
   if (hardInSession.length) {
-    var hwHtml = '<div style="background:rgba(229,83,75,.08);border-radius:16px;padding:14px 18px;margin-bottom:16px;border:1px solid rgba(229,83,75,.15)">'
-      +'<div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">🔁 Opnieuw inplannen</div>'
+    var hwHtml = '<div style="background:var(--red-soft);border-radius:16px;padding:14px 16px;margin-bottom:14px;border:1px solid rgba(200,85,75,.2)">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px">Opnieuw inplannen</div>'
       + hardInSession.map(function(c){ return '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">• <strong style="color:var(--text)">'+c.pl+'</strong> — '+c.nl+'</div>'; }).join('')
       +'</div>';
     document.getElementById('res-daily').insertAdjacentHTML('beforebegin', hwHtml);
   }
   var done = stats.todayReviews, goal = settings.dailyGoal, reached = done >= goal;
-  document.getElementById('res-daily').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:13px;color:var(--text-muted)">Doel vandaag</span><span style="font-size:12px;font-weight:700;color:'+(reached?'var(--green)':'var(--accent)')+'">'+done+'/'+goal+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+(reached?'var(--green)':'linear-gradient(90deg,var(--accent),var(--yellow))')+';width:'+Math.min(done/goal*100,100)+'%"></div></div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">'+(reached ? '🎉 Dagelijks doel gehaald!' : 'Nog '+(goal-done)+' woorden te gaan')+'</div>';
+  document.getElementById('res-daily').innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      +'<span style="font-size:13px;font-weight:600;color:var(--text-muted)">Dagdoel</span>'
+      +'<span style="font-size:13px;font-weight:800;color:'+(reached?'var(--green)':'var(--accent)')+'">'+done+'/'+goal+'</span>'
+    +'</div>'
+    +'<div class="progress-bar"><div class="progress-bar-fill" style="background:'+(reached?'var(--green)':'var(--accent)')+';width:'+Math.min(done/goal*100,100)+'%"></div></div>'
+    +'<div style="font-size:12px;color:var(--text-muted);margin-top:8px">'+(reached ? 'Dagelijks doel gehaald!' : 'Nog '+(goal-done)+' woorden te gaan')+'</div>';
   var btn = document.getElementById('res-btn');
-  btn.style.background = reached ? 'linear-gradient(135deg,var(--green),#1D8C55)' : 'linear-gradient(135deg,var(--accent),#D4543E)';
-  btn.innerHTML = '<span style="font-size:16px;font-weight:700">'+(reached ? 'Klaar voor vandaag!' : 'Nog een sessie')+'</span>';
+  btn.style.background = reached ? 'var(--green)' : 'var(--accent)';
+  btn.innerHTML = '<span style="font-size:16px;font-weight:700">'+(reached ? 'Klaar voor vandaag!' : 'Terug naar home')+'</span>';
 }
 
 // ═══════════════════════════════════════
 // PROGRESS
 // ═══════════════════════════════════════
 function renderProgress() {
-  var m = cards.filter(function(c){return c.box>=3;}).length, l = cards.filter(function(c){return c.box>=1&&c.box<3;}).length, n = cards.filter(function(c){return c.box===0;}).length;
+  var m = cards.filter(function(c){return c.box>=3;}).length;
+  var l = cards.filter(function(c){return c.box>=1&&c.box<3;}).length;
+  var n = cards.filter(function(c){return c.box===0;}).length;
   var lvl = LEVEL.compute();
-  var html = '<div style="background:linear-gradient(135deg,var(--card),var(--card-hover));border-radius:20px;padding:24px 20px;margin-bottom:20px;border:1px solid var(--border)">'
-    +'<div style="font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Jouw niveau</div>'
-    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">'
-    +'<div style="font-size:36px;font-weight:900;color:'+lvl.color+';line-height:1">'+lvl.code+'</div>'
-    +'<div><div style="font-size:18px;font-weight:700">'+lvl.label+'</div>'
-    +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+lvl.desc+'</div></div>'
-    +'</div>'
-    +(function(){
-      var req = getNextLevelRequirements();
-      if (!req) return '<div style="font-size:12px;color:var(--accent);font-weight:600">🏆 Hoogste niveau bereikt!</div>';
-      var barsHtml = req.requirements.map(function(r){
-        var pct = r.lowerIsBetter
-          ? Math.min(100, Math.round((1 - r.current / Math.max(r.target,1)) * 100))
-          : Math.min(100, Math.round(r.current / r.target * 100));
-        var val = r.lowerIsBetter
-          ? (r.current + (r.unit||'') + ' → doel ≤' + r.target + (r.unit||''))
-          : (r.current + (r.unit||'') + ' / ' + r.target + (r.unit||''));
-        return '<div style="margin-bottom:8px">'
-          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
-          +'<span style="font-size:11px;color:var(--text-muted)">'+r.label+'</span>'
-          +'<span style="font-size:11px;font-family:var(--mono);color:'+(r.done?'var(--green)':'var(--text-muted)')+'">'+val+(r.done?' ✓':'')+'</span>'
-          +'</div>'
-          +'<div class="progress-bar" style="height:4px"><div class="progress-bar-fill" style="background:'+(r.done?'var(--green)':req.nextColor)+';width:'+pct+'%"></div></div>'
-          +'</div>';
-      }).join('');
-      return '<div style="margin-bottom:8px"><span style="font-size:11px;color:var(--text-muted)">Richting </span><strong style="font-size:11px;color:'+req.nextColor+'">'+req.nextLevel+' '+req.nextLabel+'</strong></div>' + barsHtml;
-    })()
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">'
-    +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+lvl.mastered+'</div><div style="font-size:10px;color:var(--text-muted)">geleerd</div></div>'
-    +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+lvl.avgBox+'</div><div style="font-size:10px;color:var(--text-muted)">gem. box</div></div>'
-    +'<div style="background:var(--bg);border-radius:10px;padding:10px 12px;border:1px solid var(--border)"><div style="font-size:16px;font-weight:800">'+(lvl.errorPct!==undefined?lvl.errorPct:'—')+'%</div><div style="font-size:10px;color:var(--text-muted)">foutrate</div></div>'
-    +'</div>'
-    +'</div>';
-  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Woordverdeling</div><div style="display:flex;height:20px;border-radius:10px;overflow:hidden;margin-bottom:8px"><div style="width:'+(m/cards.length*100)+'%;background:var(--green);transition:width .5s"></div><div style="width:'+(l/cards.length*100)+'%;background:var(--yellow);transition:width .5s"></div><div style="width:'+(n/cards.length*100)+'%;background:var(--text-dim);transition:width .5s"></div></div>';
-  html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:28px"><span>🟢 Geleerd: '+m+'</span><span>🟡 Bezig: '+l+'</span><span>⚫ Nieuw: '+n+'</span></div>';
-  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Per categorie</div>';
-  Object.entries(CATEGORIES).forEach(function(e) { var k=e[0], v=e[1], cc=cards.filter(function(c){return c.cat===k;}), cm=cc.filter(function(c){return c.box>=3;}).length; html += '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px">'+v.emoji+' '+v.label+'</span><span style="font-size:12px;color:var(--text-muted)">'+cm+'/'+cc.length+'</span></div><div class="progress-bar" style="height:6px"><div class="progress-bar-fill" style="background:'+v.color+';width:'+(cc.length?cm/cc.length*100:0)+'%"></div></div></div>'; });
-  // Box-verdeling per doos (0-6)
-  html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px;margin-top:28px">Box-verdeling</div>';
-  html += '<div style="display:flex;gap:4px;align-items:flex-end;height:52px;margin-bottom:4px">';
-  var boxCounts = [0,1,2,3,4,5,6].map(function(b){ return cards.filter(function(c){ return c.box===b; }).length; });
-  var maxBox = Math.max(1, Math.max.apply(null, boxCounts));
-  var boxColors = ['var(--text-dim)','var(--text-dim)','var(--yellow)','var(--yellow)','var(--green)','var(--green)','var(--green)'];
-  boxCounts.forEach(function(cnt, b){
-    var h = Math.max(4, Math.round(cnt/maxBox*48));
-    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
-      +'<div style="font-size:9px;color:var(--text-dim)">'+cnt+'</div>'
-      +'<div style="width:100%;height:'+h+'px;background:'+boxColors[b]+';border-radius:3px 3px 0 0;opacity:'+(cnt?1:.25)+'"></div>'
-      +'</div>';
-  });
-  html += '</div><div style="display:flex;gap:4px;margin-bottom:28px">';
-  [0,1,2,3,4,5,6].forEach(function(b){ html += '<div style="flex:1;text-align:center;font-size:10px;color:var(--text-dim)">'+b+'</div>'; });
-  html += '</div>';
+  var lvlColors = {A0:'#A8917A',A1:'#4A90D9',A2:'#1F9D62',B1:'#D9543B'};
+  var lvlColor = lvlColors[lvl.code] || '#A8917A';
 
-  // Activiteit laatste 7 dagen
-  html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px">Activiteit (7 dagen)</div>';
+  // Niveaukaart met checklist
+  var html = '<div style="background:var(--card);border-radius:20px;padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">'
+    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">'
+    +'<div style="font-size:38px;font-weight:900;color:'+lvlColor+';line-height:1;font-family:var(--mono)">'+lvl.code+'</div>'
+    +'<div><div style="font-size:17px;font-weight:700">'+lvl.label+'</div>'
+    +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+lvl.desc+'</div></div>'
+    +'</div>';
+
+  var req = getNextLevelRequirements();
+  if (!req) {
+    html += '<div style="font-size:13px;font-weight:700;color:var(--accent)">Hoogste niveau bereikt!</div>';
+  } else {
+    var reqColor = lvlColors[req.nextLevel] || '#D9543B';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Richting '+req.nextLevel+'</div>';
+    html += req.requirements.map(function(r){
+      var pct = r.lowerIsBetter
+        ? Math.min(100, Math.round((1 - r.current / Math.max(r.target,1)) * 100))
+        : Math.min(100, Math.round(r.current / r.target * 100));
+      var val = r.lowerIsBetter
+        ? r.current + (r.unit||'') + ' → ≤' + r.target + (r.unit||'')
+        : r.current + (r.unit||'') + ' / ' + r.target + (r.unit||'');
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+        +'<div style="width:18px;height:18px;border-radius:50%;background:'+(r.done?'var(--green)':'var(--border)')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+          +(r.done?'<span style="color:white;font-size:11px;font-weight:800">✓</span>':'<span style="color:var(--text-muted);font-size:10px">○</span>')
+        +'</div>'
+        +'<div style="flex:1">'
+          +'<div style="display:flex;justify-content:space-between;margin-bottom:3px">'
+            +'<span style="font-size:12px;font-weight:500;color:var(--text)">'+r.label+'</span>'
+            +'<span style="font-size:11px;font-family:var(--mono);color:'+(r.done?'var(--green)':'var(--text-muted)')+'">'+val+'</span>'
+          +'</div>'
+          +'<div class="progress-bar" style="height:4px"><div class="progress-bar-fill" style="background:'+(r.done?'var(--green)':reqColor)+';width:'+pct+'%"></div></div>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">'
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px;border:1px solid var(--border);text-align:center"><div style="font-size:18px;font-weight:800;color:var(--green)">'+lvl.mastered+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">geleerd</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px;border:1px solid var(--border);text-align:center"><div style="font-size:18px;font-weight:800;font-family:var(--mono)">'+lvl.avgBox+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">gem. box</div></div>'
+    +'<div style="background:var(--bg);border-radius:10px;padding:10px;border:1px solid var(--border);text-align:center"><div style="font-size:18px;font-weight:800;font-family:var(--mono)">'+(lvl.errorPct!==undefined?lvl.errorPct:'—')+'%</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">foutrate</div></div>'
+    +'</div>'
+  +'</div>';
+
+  // Activiteit laatste 14 dagen
   var history = load('daily_history') || {};
-  var last7 = []; for (var i=6;i>=0;i--) { var d=dateStr(Date.now()-i*864e5); last7.push({d:d,r:(history[d]||{}).reviews||0,c:(history[d]||{}).correct||0}); }
-  var maxR = Math.max(1, Math.max.apply(null, last7.map(function(x){return x.r;})));
-  html += '<div style="display:flex;gap:4px;align-items:flex-end;height:52px;margin-bottom:4px">';
-  last7.forEach(function(day){
-    var h = Math.max(day.r?3:0, Math.round(day.r/maxR*48));
+  var last14 = []; for (var i=13;i>=0;i--) { var d=dateStr(Date.now()-i*864e5); last14.push({d:d,r:(history[d]||{}).reviews||0,c:(history[d]||{}).correct||0}); }
+  var maxR = Math.max(1, Math.max.apply(null, last14.map(function(x){return x.r;})));
+  html += '<div style="background:var(--card);border-radius:20px;padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:14px">Reviews per dag (14 dagen)</div>'
+    +'<div style="display:flex;gap:3px;align-items:flex-end;height:56px;margin-bottom:4px">';
+  last14.forEach(function(day){
+    var bh = Math.max(day.r?3:0, Math.round(day.r/maxR*52));
     var acc = day.r ? Math.round(day.c/day.r*100) : 0;
     html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
-      +'<div style="font-size:9px;color:var(--text-dim)">'+(day.r||'')+'</div>'
-      +'<div style="width:100%;height:'+h+'px;background:'+(day.r ? (acc>=70?'var(--green)':'var(--yellow)') : 'var(--text-dim)')+';border-radius:3px 3px 0 0;opacity:'+(day.r?1:.2)+'"></div>'
+      +'<div style="font-size:8px;color:var(--text-dim)">'+(day.r||'')+'</div>'
+      +'<div style="width:100%;height:'+bh+'px;background:'+(day.r?(acc>=70?'var(--green)':'var(--yellow)'):'var(--border)')+';border-radius:3px 3px 0 0"></div>'
       +'</div>';
   });
-  html += '</div><div style="display:flex;gap:4px;margin-bottom:28px">';
-  last7.forEach(function(day){ html += '<div style="flex:1;text-align:center;font-size:10px;color:var(--text-dim)">'+new Date(day.d).toLocaleDateString('nl-NL',{weekday:'narrow'})+'</div>'; });
+  html += '</div><div style="display:flex;gap:3px">';
+  last14.forEach(function(day,i){ html += '<div style="flex:1;text-align:center;font-size:8px;color:var(--text-dim)">'+(i%2===0?new Date(day.d).toLocaleDateString('nl-NL',{weekday:'narrow'}):'')+'</div>'; });
+  html += '</div></div>';
+
+  // Woorden per box
+  html += '<div style="background:var(--card);border-radius:20px;padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:14px">Woorden per box</div>';
+  var boxCounts = [0,1,2,3,4,5,6].map(function(b){ return cards.filter(function(c){ return c.box===b; }).length; });
+  var maxBox = Math.max(1, Math.max.apply(null, boxCounts));
+  var boxColors = ['#D7CDBE','#C4B9AA','var(--yellow)','var(--yellow)','var(--green)','var(--green)','var(--green)'];
+  boxCounts.forEach(function(cnt, b){
+    var pct = Math.round(cnt/maxBox*100);
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      +'<div style="font-size:11px;font-weight:700;font-family:var(--mono);width:14px;color:var(--text-muted)">'+b+'</div>'
+      +'<div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">'
+        +'<div style="width:'+pct+'%;height:100%;background:'+boxColors[b]+';border-radius:4px;transition:width .5s"></div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);min-width:20px;text-align:right">'+cnt+'</div>'
+    +'</div>';
+  });
   html += '</div>';
 
-  // Moeilijkste woorden (top 5 op personalDiff)
+  // Per categorie
+  html += '<div style="background:var(--card);border-radius:20px;padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:14px">Per categorie</div>';
+  Object.entries(CATEGORIES).forEach(function(e) {
+    var k=e[0],v=e[1],cc=cards.filter(function(c){return c.cat===k;}),cm=cc.filter(function(c){return c.box>=3;}).length;
+    html += '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;font-weight:500">'+v.label+'</span><span style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">'+cm+'/'+cc.length+'</span></div><div class="progress-bar"><div class="progress-bar-fill" style="background:'+v.color+';width:'+(cc.length?cm/cc.length*100:0)+'%"></div></div></div>';
+  });
+  html += '</div>';
+
+  // Moeilijkste woorden
   var trouble = cards.filter(function(c){ return c.reviews>=2&&personalDiff(c)>0; })
     .sort(function(a,b){ return personalDiff(b)-personalDiff(a); }).slice(0,5);
+  html += '<div style="background:var(--card);border-radius:20px;padding:20px;margin-bottom:16px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:12px">Moeilijkste woorden</div>';
   if (trouble.length) {
-    html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px">Moeilijkste woorden</div>';
-    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:28px">';
     trouble.forEach(function(c){
       var pd = Math.round(personalDiff(c)*100);
-      html += '<div style="background:var(--surface);border-radius:12px;padding:10px 14px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border-soft)">'
         +'<div><div style="font-size:13px;font-weight:600">'+c.pl+'</div><div style="font-size:11px;color:var(--text-muted)">'+c.nl+'</div></div>'
-        +'<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:'+(pd>50?'var(--red)':'var(--yellow)')+'">'+pd+'%</div><div style="font-size:10px;color:var(--text-dim)">fout</div></div>'
-        +'</div>';
+        +'<div style="font-size:13px;font-weight:800;font-family:var(--mono);color:'+(pd>50?'var(--red)':'var(--yellow)')+'">'+pd+'%</div>'
+      +'</div>';
     });
-    html += '</div>';
   } else {
-    html += '<div style="font-size:15px;font-weight:700;margin-bottom:10px">Moeilijkste woorden</div>'
-      +'<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;margin-bottom:28px">🎉 Nog geen probleemwoorden!</div>';
+    html += '<div style="font-size:13px;color:var(--text-muted)">Nog geen probleemwoorden — goed bezig!</div>';
   }
+  html += '</div>';
 
-  html += '<div style="font-size:15px;font-weight:700;margin-bottom:12px">Statistieken</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+  // Statistieken
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div class="stat-box"><div class="val">'+stats.totalReviews+'</div><div class="label">Totaal reviews</div></div>'
     +'<div class="stat-box"><div class="val">'+stats.bestStreak+' 🔥</div><div class="label">Beste streak</div></div>'
     +'<div class="stat-box"><div class="val">'+stats.sessionsCompleted+'</div><div class="label">Sessies</div></div>'
     +'<div class="stat-box"><div class="val">'+cards.length+'</div><div class="label">Totaal woorden</div></div>'
     +'<div class="stat-box"><div class="val">'+stats.todayReviews+'</div><div class="label">Vandaag</div></div>'
-    +'<div class="stat-box"><div class="val">'+(stats.todayReviews?Math.round(stats.todayCorrect/stats.todayReviews*100):0)+'%</div><div class="label">Accuracy vandaag</div></div>'
+    +'<div class="stat-box"><div class="val">'+(stats.todayReviews?Math.round(stats.todayCorrect/stats.todayReviews*100):0)+'%</div><div class="label">Nauwkeurigheid</div></div>'
     +'</div>';
+
   document.getElementById('prog-content').innerHTML = html;
 }
 
@@ -1410,24 +1510,26 @@ function renderWords() {
 
   if (filtered.length === 0) {
     list.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)">'
-      + '<div style="font-size:36px;margin-bottom:12px">🔍</div>'
+      + '<div style="font-size:32px;font-weight:300;margin-bottom:12px;color:var(--border)">⌕</div>'
       + '<div style="font-size:15px;font-weight:600;color:var(--text)">Geen woorden gevonden</div>'
       + '<div style="font-size:13px;margin-top:6px">Pas de filters aan of verwijder de zoekopdracht.</div>'
       + '</div>';
     return;
   }
   list.innerHTML = filtered.map(function(c) {
-    var mis = c.misses||0, barColor = mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--green)', cat=CATEGORIES[c.cat]||{}, needed=SRS.requiredStreak(mis);
+    var mis = c.misses||0, cat=CATEGORIES[c.cat]||{}, needed=SRS.requiredStreak(mis);
+    var boxColor = c.box>=3?'var(--green)':c.box>=1?'var(--yellow)':'var(--border)';
     var pd = personalDiff(c), pdColor = c.reviews===0?'var(--text-dim)':pd<0.2?'var(--green)':pd<0.5?'var(--yellow)':'var(--red)';
-    var pdDot = '<div style="width:8px;height:8px;border-radius:50%;background:'+pdColor+';flex-shrink:0" title="Persoonlijke moeilijkheid"></div>';
+    var pdDot = '<div style="width:8px;height:8px;border-radius:50%;background:'+pdColor+';flex-shrink:0"></div>';
     var cardType = getCardType(c);
-    var typeBadge = cardType!=='word' ? '<span class="badge" style="background:rgba(46,173,109,.12);color:var(--green)">'+({phrase:'frase',sentence:'zin',pattern:'patroon'}[cardType]||cardType)+'</span>' : '';
-    var bars = [0,1,2,3,4,5,6].map(function(b){return '<div style="width:4px;height:12px;border-radius:2px;background:'+(b<=c.box?barColor:'var(--text-dim)')+'"></div>';}).join('');
-    var badge = mis>0 ? '<span class="badge" style="background:'+(mis>3?'var(--red-soft)':mis>1?'rgba(230,168,23,.13)':'rgba(72,79,88,.2)')+';color:'+(mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--text-muted)')+'">'+mis+'× fout</span>' : '';
+    var typeBadge = cardType!=='word' ? '<span class="badge" style="background:var(--green-soft);color:var(--green)">'+({phrase:'frase',sentence:'zin',pattern:'patroon'}[cardType]||cardType)+'</span>' : '';
+    var bars = [0,1,2,3,4,5,6].map(function(b){return '<div style="width:4px;height:12px;border-radius:2px;background:'+(b<=c.box?boxColor:'var(--border)')+'"></div>';}).join('');
+    var badge = mis>0 ? '<span class="badge" style="background:'+(mis>3?'var(--red-soft)':mis>1?'rgba(230,168,23,.13)':'var(--border-soft)')+';color:'+(mis>3?'var(--red)':mis>1?'var(--yellow)':'var(--text-muted)')+'">'+mis+'× fout</span>' : '';
     var fc=(c.modeStats||{}).flashcard||0, tc=(c.modeStats||{}).type||0;
-    var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(123,97,255,.07);border:1px solid rgba(123,97,255,.13);font-size:11px;color:var(--purple)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--purple)':'rgba(123,97,255,.2)')+'"></div>';}).join('')+'</div></div>' : '';
+    var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:var(--accent-soft);border:1px solid rgba(217,84,59,.2);font-size:11px;color:var(--accent)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--accent)':'rgba(217,84,59,.2)')+'"></div>';}).join('')+'</div></div>' : '';
     var safePl = c.pl.replace(/'/g,"\\'");
-    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+typeBadge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:var(--blue)">🔊</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div><span style="font-size:11px;color:var(--text-muted)">'+(cat.emoji||'')+'</span></div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">🃏 '+fc+'×</div><div class="mode-badge">⌨️ '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">🔊</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">🧠 Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
+    var boxBadge = '<span style="font-size:10px;font-family:var(--mono);font-weight:600;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:1px 5px">'+c.box+'</span>';
+    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+typeBadge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:13px;cursor:pointer;padding:2px 4px;color:var(--blue)">♪</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div>'+boxBadge+'</div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">flash '+fc+'×</div><div class="mode-badge">type '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--blue)">♪</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
   }).join('');
 }
 
@@ -1540,7 +1642,7 @@ function renderManageWords() {
     +'</div>';
   if (customWords.length === 0) {
     html += '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)">'
-      +'<div style="font-size:40px;margin-bottom:12px">📝</div>'
+      +'<div style="font-size:36px;font-weight:200;color:var(--border);margin-bottom:12px">+</div>'
       +'<div style="font-size:15px;font-weight:600;color:var(--text)">Nog geen eigen woorden</div>'
       +'<div style="font-size:13px;margin-top:6px">Voeg woorden toe met de + knop hierboven.</div>'
       +'</div>';
@@ -1557,11 +1659,11 @@ function renderManageWords() {
         +'<span class="badge" style="background:rgba(74,144,217,.12);color:var(--blue)">'+w.level+'</span>'
         +'</div>'
         +'<div style="font-size:13px;color:var(--text-muted)">'+w.nl+'</div>'
-        +'<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+(cat.emoji||'')+' '+( cat.label||w.cat)+' · '+reviews+' reviews · box '+box+'</div>'
+        +'<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+( cat.label||w.cat)+' · '+reviews+' reviews · box '+box+'</div>'
         +'</div>'
         +'<div style="display:flex;gap:6px">'
-        +'<button onclick="openWordForm('+w.id+')" class="icon-btn" style="font-size:13px" title="Bewerken">✏️</button>'
-        +'<button onclick="toggleWordActive('+w.id+')" class="icon-btn" style="font-size:13px" title="'+(w.active?'Deactiveren':'Activeren')+'">'+(w.active?'⏸':'▶️')+'</button>'
+        +'<button onclick="openWordForm('+w.id+')" class="icon-btn" style="font-size:13px" title="Bewerken">✎</button>'
+        +'<button onclick="toggleWordActive('+w.id+')" class="icon-btn" style="font-size:13px" title="'+(w.active?'Deactiveren':'Activeren')+'">'+(w.active?'◼':'▶')+'</button>'
         +'</div></div></div>';
     });
     html += '<div style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:16px">'+customWords.length+' eigen woord'+(customWords.length!==1?'en':'')+'</div>';
@@ -1854,19 +1956,19 @@ function updateReminderStatus() {
   var noPerm   = ('Notification' in window) && Notification.permission === 'denied';
   var statusHtml;
   if (noPerm) {
-    statusHtml = '🚫 <strong>Geen toestemming</strong> voor notificaties.<br>'
+    statusHtml = '<strong>Geen toestemming</strong> voor notificaties.<br>'
       + '<span style="color:var(--text-muted)">Sta notificaties toe via Safari-instellingen → Websites → Meldingen.</span>';
   } else if (pushOk && hasPerm) {
-    statusHtml = '✅ <strong>Push actief</strong> — je ontvangt een melding om <strong>'+settings.reminderTime+'</strong>, ook als de app gesloten is.'
+    statusHtml = '<strong style="color:var(--green)">Push actief</strong> — je ontvangt een melding om <strong>'+settings.reminderTime+'</strong>, ook als de app gesloten is.'
       + '<br><span style="color:var(--text-muted)">Vereist: iOS 16.4+, app op beginscherm.</span>';
   } else if (!pushOk) {
-    statusHtml = '⏰ Herinnering om <strong>'+settings.reminderTime+'</strong> ingesteld.'
-      + '<br><span style="color:var(--yellow)">⚠️ Push werkt alleen als de app op het beginscherm staat (iOS 16.4+). Melding nu alleen als Safari open is.</span>';
+    statusHtml = 'Herinnering om <strong>'+settings.reminderTime+'</strong> ingesteld.'
+      + '<br><span style="color:var(--yellow)">Push werkt alleen als de app op het beginscherm staat (iOS 16.4+). Melding nu alleen als Safari open is.</span>';
   } else {
-    statusHtml = '⏰ Herinnering om <strong>'+settings.reminderTime+'</strong> — toestemming vereist.';
+    statusHtml = 'Herinnering om <strong>'+settings.reminderTime+'</strong> — toestemming vereist.';
   }
   var testBtn = (hasPerm && settings.reminderEnabled)
-    ? '<div style="margin-top:10px"><button id="test-notif-btn" onclick="sendTestNotification()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue);font-size:12px">🔔 Test notificatie</button></div>'
+    ? '<div style="margin-top:10px"><button id="test-notif-btn" onclick="sendTestNotification()" class="data-btn" style="background:rgba(74,144,217,.12);color:var(--blue);font-size:12px">Test notificatie</button></div>'
     : '';
   el.innerHTML = '<span style="font-size:12px;line-height:1.6">'+statusHtml+'</span>' + testBtn;
 }
@@ -1917,11 +2019,11 @@ function initPolishVoice() {
 
 function getVoiceStatusLabel() {
   var name = polishVoice ? ' (' + polishVoice.name.split(' ').slice(0,2).join(' ') + ')' : '';
-  if (polishVoiceStatus === 'exact')       return '✅ Poolse stem beschikbaar' + name;
-  if (polishVoiceStatus === 'partial')     return '⚠️ Gedeeltelijk Pools beschikbaar' + name;
-  if (polishVoiceStatus === 'fallback')    return '⚠️ Geen Poolse stem — standaardstem gebruikt';
-  if (polishVoiceStatus === 'unavailable') return '🚫 Uitspraak niet beschikbaar op dit apparaat';
-  return '⏳ Stemmen worden geladen...';
+  if (polishVoiceStatus === 'exact')       return '✓ Poolse stem beschikbaar' + name;
+  if (polishVoiceStatus === 'partial')     return '~ Gedeeltelijk Pools beschikbaar' + name;
+  if (polishVoiceStatus === 'fallback')    return '~ Geen Poolse stem — standaardstem gebruikt';
+  if (polishVoiceStatus === 'unavailable') return '✕ Uitspraak niet beschikbaar op dit apparaat';
+  return 'Stemmen worden geladen...';
 }
 
 function speak(text, lang) {
@@ -2003,21 +2105,21 @@ function getSyncDetailLabel() {
 function updateSyncBadge() {
   var el = document.getElementById('home-sync'); if (!el) return;
   if (!sbUser) {
-    el.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);cursor:pointer" onclick="showScreen(\'settings\')">📱 Lokaal opgeslagen</span>';
+    el.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:var(--card);border:1px solid var(--border);color:var(--text-muted);cursor:pointer" onclick="showScreen(\'settings\')">Lokaal opgeslagen</span>';
     return;
   }
   var label, bg, color;
   if (syncStatus === 'syncing') {
-    label = '🔄 Synchroniseren...'; bg = 'rgba(74,144,217,.15)'; color = 'var(--blue)';
+    label = '↻ Synchroniseren...'; bg = 'rgba(74,144,217,.15)'; color = 'var(--blue)';
   } else if (syncStatus === 'success') {
     var t = lastSyncAt ? ' om ' + new Date(lastSyncAt).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'}) : '';
-    label = '✅ Gesynchroniseerd' + t; bg = 'var(--green-soft)'; color = 'var(--green)';
+    label = '✓ Gesynchroniseerd' + t; bg = 'var(--green-soft)'; color = 'var(--green)';
   } else if (syncStatus === 'failed') {
-    label = '⚠️ Sync mislukt'; bg = 'rgba(229,83,75,.12)'; color = 'var(--red)';
+    label = '! Sync mislukt'; bg = 'rgba(229,83,75,.12)'; color = 'var(--red)';
   } else if (syncStatus === 'pending') {
-    label = '⏳ Niet gesynchroniseerd'; bg = 'rgba(230,168,23,.12)'; color = 'var(--yellow)';
+    label = '○ Niet gesynchroniseerd'; bg = 'rgba(230,168,23,.12)'; color = 'var(--yellow)';
   } else {
-    label = '☁️ Verbonden'; bg = 'var(--green-soft)'; color = 'var(--green)';
+    label = '☁ Verbonden'; bg = 'var(--green-soft)'; color = 'var(--green)';
   }
   el.innerHTML = '<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:'+bg+';color:'+color+'">'+label+'</span>';
 }
