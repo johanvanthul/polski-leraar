@@ -19,8 +19,6 @@
   --green: #1F9D62; --green-soft: rgba(31,157,98,.12);
   --red: #C8554B; --red-soft: rgba(200,85,75,.12);
   --yellow: #E6A817; --blue: #4A90D9;
-  /* purple aliased to accent for backwards compat with inline styles */
-  --purple: #D9543B;
   --text: #211D18; --text-muted: #8A8175; --text-dim: #A8917A;
   --border: #ECE3D6; --border-soft: #F2EADF;
   --font: 'DM Sans', -apple-system, sans-serif;
@@ -236,6 +234,7 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
   <div id="res-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px"></div>
   <div id="res-level-up" style="display:none;border-radius:16px;padding:16px 20px;margin-bottom:14px;border:1px solid;text-align:left"></div>
   <div id="res-new-words" style="display:none;background:var(--accent-soft);border-radius:16px;padding:16px 20px;margin-bottom:14px;border:1px solid rgba(217,84,59,.2);text-align:left"></div>
+  <div id="res-hard"></div>
   <div id="res-daily" style="background:var(--card);border-radius:16px;padding:16px 20px;margin-bottom:20px;border:1px solid var(--border);text-align:left;box-shadow:0 4px 12px rgba(120,90,60,.05)"></div>
   <button id="res-btn" class="big-btn" style="justify-content:center;width:100%" onclick="showScreen('home')"></button>
 </div>
@@ -477,9 +476,10 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <button onclick="resetAllData()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Reset</button>
     </div>
   </div>
-  <div style="text-align:center;padding:16px 0 8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)">Polski Leraar v5.0</div>
+  <div style="text-align:center;padding:16px 0 8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)">Polski Leraar v5.2</div>
 </div>
 
+<script src="core.js"></script>
 <script>
 // ═══════════════════════════════════════
 // WORD DATABASE
@@ -621,110 +621,8 @@ const WORD_DB = [
 ];
 
 // ═══════════════════════════════════════
-// LEVEL ENGINE
+// STATE + STORAGE  (LEVEL, SRS, sessieselectie en antwoordcontrole staan in core.js)
 // ═══════════════════════════════════════
-const LEVEL = {
-  DEFS: [
-    {code:'A0', label:'Absolute Beginner', desc:'Je bouwt je eerste actieve woordenschat op.', color:'var(--text-muted)'},
-    {code:'A1', label:'Beginner',           desc:'Je kent de basiswoorden en kunt eenvoudige dingen zeggen.', color:'var(--blue)'},
-    {code:'A2', label:'Elementair',         desc:'Je kunt je uitdrukken over vertrouwde onderwerpen.', color:'var(--green)'},
-    {code:'B1', label:'Drempelwaarde',      desc:'Je kunt eenvoudige gesprekken voeren en begrijpen.', color:'var(--accent)'},
-  ],
-  // wat je nodig hebt OM dit niveau te bereiken
-  thresholds: {
-    A1: {mastered:10, avgBox:1.2, errorRate:0.55},
-    A2: {mastered:25, avgBox:2.0, errorRate:0.40},
-    B1: {mastered:40, avgBox:3.0, errorRate:0.25},
-  },
-
-  compute() {
-    var reviewed = cards.filter(function(c){return c.reviews>0;});
-    var mastered  = cards.filter(function(c){return c.box>=3;}).length;
-    if (!reviewed.length) return Object.assign({}, this.DEFS[0], {progress:0, progressLabel:'10 woorden nodig voor A1', mastered:mastered, nextMastered:10});
-
-    var avgBox     = reviewed.reduce(function(s,c){return s+c.box;},0) / reviewed.length;
-    var totalRev   = reviewed.reduce(function(s,c){return s+c.reviews;},0);
-    var totalMiss  = reviewed.reduce(function(s,c){return s+(c.misses||0);},0);
-    var errorRate  = totalRev ? totalMiss/totalRev : 1;
-
-    var def = this.DEFS[0];
-    var order = ['A1','A2','B1'];
-    var self = this;
-    order.forEach(function(code){
-      var t = self.thresholds[code];
-      if (mastered >= t.mastered && avgBox >= t.avgBox && errorRate <= t.errorRate) {
-        def = self.DEFS.find(function(d){return d.code===code;});
-      }
-    });
-
-    var idx  = this.DEFS.indexOf(def);
-    var next = this.DEFS[idx+1];
-    var nextT = next ? this.thresholds[next.code] : null;
-    var progress = nextT ? Math.min(100, Math.round(mastered/nextT.mastered*100)) : 100;
-    var progressLabel = next
-      ? mastered+'/'+nextT.mastered+' woorden geleerd voor '+next.code
-      : 'Hoogste niveau bereikt!';
-
-    return Object.assign({}, def, {
-      progress: progress, progressLabel: progressLabel,
-      mastered: mastered, nextMastered: nextT ? nextT.mastered : mastered,
-      avgBox: Math.round(avgBox*10)/10,
-      errorPct: Math.round(errorRate*100),
-    });
-  },
-
-  getNextWords(count) {
-    var lvl = this.compute();
-    var activeIds = new Set(cards.map(function(c){return c.id;}));
-    var order = ['A0','A1','A2','B1'];
-    var idx = order.indexOf(lvl.code);
-    var targets = new Set(order.slice(Math.max(0,idx-1), idx+2));
-
-    var candidates = WORD_DB.filter(function(w){
-      return w.pool && !activeIds.has(w.id) && targets.has(w.level||'A0');
-    });
-
-    // spreid over categorieën: minst bezette categorie eerst
-    var catCount = {};
-    cards.forEach(function(c){ catCount[c.cat]=(catCount[c.cat]||0)+1; });
-    candidates.sort(function(a,b){
-      var cd = (catCount[a.cat]||0)-(catCount[b.cat]||0);
-      return cd!==0 ? cd : (a.diff||1)-(b.diff||1);
-    });
-
-    return candidates.slice(0, count);
-  },
-};
-
-// ═══════════════════════════════════════
-// SRS ENGINE + STATE + STORAGE
-// ═══════════════════════════════════════
-const SRS = {
-  intervals: [0,1,3,7,14,30,60],
-  getNextReview(c) {
-    const iv = this.intervals[Math.min(c.box, 6)];
-    const mf = (c.misses||0) > 3 ? .5 : (c.misses||0) > 1 ? .75 : 1;
-    const base = c.lastReview + Math.floor(iv * mf) * 864e5;
-    // Box-0 woorden die al eens gezien zijn: minimaal 4 uur rust
-    // zodat ze niet direct in de volgende sessie terugkomen
-    const cooldown = (c.box === 0 && c.lastReview > 0) ? c.lastReview + 4 * 36e5 : 0;
-    return Math.max(base, cooldown);
-  },
-  requiredStreak(m) { return m >= 5 ? 4 : m >= 3 ? 3 : m >= 1 ? 2 : 1; },
-  promote(c, mode) {
-    const ns = c.streak + 1, ms = {...(c.modeStats||{flashcard:0,type:0})};
-    ms[mode] = (ms[mode]||0) + 1;
-    const needed = this.requiredStreak(c.misses||0);
-    if (ns >= needed) return {...c, box:Math.min(c.box+1,6), lastReview:Date.now(), reviews:c.reviews+1, streak:ns, misses:Math.max((c.misses||0)-1,0), modeStats:ms};
-    return {...c, lastReview:Date.now(), reviews:c.reviews+1, streak:ns, modeStats:ms};
-  },
-  demote(c, mode) {
-    const ms = {...(c.modeStats||{flashcard:0,type:0})};
-    ms[mode] = (ms[mode]||0) + 1;
-    return {...c, box:Math.max(c.box-2,0), lastReview:Date.now(), reviews:c.reviews+1, streak:0, misses:(c.misses||0)+1, modeStats:ms};
-  }
-};
-
 let cards = [];
 let customWords = []; // eigen woorden toegevoegd via beheerder
 let stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:null};
@@ -820,13 +718,10 @@ function renderHome() {
 
   const mastered = cards.filter(function(c){return c.box >= 3;}).length;
   const due = getDueCards().length;
-  const done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
-  const goal = settings.dailyGoal;
-  const reached = done >= goal;
-  const sz = settings.sessionSize || 10;
+  const sz =settings.sessionSize || 10;
 
   // Stat kaarten
-  document.getElementById('home-streak').textContent = stats.streak + ' 🔥';
+  document.getElementById('home-streak').textContent = currentStreak() + ' 🔥';
   document.getElementById('home-mastered').textContent = mastered;
 
   // CTA kaart vullen
@@ -867,7 +762,6 @@ function renderHome() {
   }
 
   // Modi knoppen (2×2 grid)
-  var bonusPrefix = reached ? 'Bonus ' : '';
   document.getElementById('btn-flash-sub').textContent = '~'+sz+' · herken & flip';
   document.getElementById('btn-type-sub').textContent  = '~'+sz+' · actief leren';
   document.getElementById('btn-listen-sub').textContent = '~'+sz+' · hoor & vertaal';
@@ -882,9 +776,16 @@ function renderCatPills(containerId, active, onClick) {
   Object.entries(CATEGORIES).forEach(function(e) { var b = document.createElement('button'); b.className = 'pill' + (active===e[0]?' active':''); b.textContent = e[1].label; b.onclick = function(){onClick(e[0]);}; el.appendChild(b); });
 }
 
+// De streak zoals hij nu geldt: nul zodra er een dag is overgeslagen
+function currentStreak() {
+  if (!stats.lastSessionDate) return 0;
+  var last = dateStr(stats.lastSessionDate);
+  return (last === dateStr() || last === dateStr(Date.now() - 864e5)) ? stats.streak : 0;
+}
+
 function getDueCards() {
   var now = Date.now();
-  return cards.filter(function(c){return SRS.getNextReview(c) <= now;}).filter(function(c){return selectedCat==='all'||c.cat===selectedCat;})
+  return cards.filter(function(c){return c.reviews > 0 && SRS.getNextReview(c) <= now;}).filter(function(c){return selectedCat==='all'||c.cat===selectedCat;})
     .sort(function(a,b){return (b.misses||0)-(a.misses||0) || a.box-b.box || a.lastReview-b.lastReview;});
 }
 
@@ -895,10 +796,10 @@ function startSession(mode) {
   if (mode === 'type') {
     var hasFlashcards = cards.some(function(c){
       return isCardActive(c) && getCardType(c)==='word' &&
-             (selectedCat==='all'||c.cat===selectedCat) && ((c.modeStats||{}).flashcard||0) >= 1;
+             (selectedCat==='all'||c.cat===selectedCat) && c.reviews >= 1;
     });
     if (!hasFlashcards) {
-      alert('Oefen eerst flashcards — type-modus werkt alleen met woorden die je al herkend hebt.');
+      alert('Oefen eerst een paar woorden — typen werkt met woorden die je al een keer hebt gezien.');
       return;
     }
   }
@@ -911,99 +812,20 @@ function startSession(mode) {
     alert('Geen woorden beschikbaar. Voeg woorden toe of reset je voortgang.');
     return;
   }
-  var dir = (mode === 'listen') ? 'pl-nl' : (mode === 'type' || mode === 'sentence') ? 'nl-pl' : (mode === 'smart') ? 'pl-nl' : getDir();
+  var dir = (mode === 'smart') ? 'pl-nl' : getDir(mode);
   sess = {cards:sel, idx:0, mode:mode, dir:dir, showAnswer:false, isRetry:false, wrong:[], correctCount:0, totalCount:0, newWords:[], levelUp:null};
   showScreen('session'); renderSessionCard();
 }
-function getDir() {
-  if (sess.mode === 'listen') return 'pl-nl';
-  if (sess.mode === 'type')   return 'nl-pl';
+// Richting per modus: luisteren = Pools → NL, typen en zinnen = NL → Pools,
+// flashcards en slimme mix volgen de instelling.
+function getDir(mode) {
+  mode = mode || sess.mode;
+  if (mode === 'listen') return 'pl-nl';
+  if (mode === 'type' || mode === 'sentence') return 'nl-pl';
   return settings.direction === 'mix' ? (Math.random() > .5 ? 'pl-nl' : 'nl-pl') : settings.direction;
 }
-function shuffle(a) { for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} }
 
-// Persoonlijke moeilijkheidsgraad: hoe vaak fout t.o.v. totale reviews
-function personalDiff(c) {
-  return c.reviews > 0 ? (c.misses||0) / c.reviews : 0;
-}
 
-// Bouw de kaartenset voor een sessie op basis van sessiemix-instelling
-function buildSessionCards(mode) {
-  var now = Date.now();
-  var mix = settings.sessionMix || 'balanced';
-  var sz  = settings.sessionSize || 10;
-
-  var isSentMode  = mode === 'sentence';
-  var isSmartMode = mode === 'smart';
-
-  var allActive = cards.filter(function(c){
-    if (!isCardActive(c)) return false;
-    if (selectedCat !== 'all' && c.cat !== selectedCat) return false;
-    var t = getCardType(c);
-    // Strikte scheiding: zinnen-modus = alleen sentence/pattern/phrase
-    //                   smart-modus   = alles (woorden + zinnen)
-    //                   overige modi  = alleen word
-    if (isSmartMode) return true;
-    if (isSentMode) return t === 'sentence' || t === 'pattern' || t === 'phrase';
-    return t === 'word';
-  });
-
-  // Zinnenmodus: sorteer op personalDiff, geen fallback naar gewone woorden
-  if (isSentMode) {
-    var sel2 = allActive.slice().sort(function(a,b){
-      return personalDiff(b)-personalDiff(a) || (b.misses||0)-(a.misses||0) || a.box-b.box;
-    }).slice(0, sz);
-    shuffle(sel2);
-    return sel2;
-  }
-
-  var dueWords = allActive.filter(function(c){ return SRS.getNextReview(c) <= now; })
-    .sort(function(a,b){
-      return personalDiff(b) - personalDiff(a) ||
-             (b.misses||0) - (a.misses||0) ||
-             a.box - b.box ||
-             a.lastReview - b.lastReview;
-    });
-
-  var weakWords = allActive.filter(function(c){
-    var pd = personalDiff(c);
-    return SRS.getNextReview(c) > now &&
-           ((c.misses||0) >= 2 || (c.box <= 1 && c.reviews >= 2) || (c.reviews > 0 && pd >= 0.3));
-  }).sort(function(a,b){ return personalDiff(b)-personalDiff(a) || (b.misses||0)-(a.misses||0) || a.box-b.box; });
-
-  var newWords = allActive.filter(function(c){ return c.reviews === 0; })
-    .sort(function(a,b){ return (a.diff||1)-(b.diff||1); });
-
-  var q = ({
-    'balanced':     {due:.60, weak:.20, nw:.20},
-    'review-heavy': {due:.80, weak:.15, nw:.05},
-    'new-heavy':    {due:.40, weak:.20, nw:.40},
-    'weak-words':   {due:.40, weak:.50, nw:.10},
-  })[mix] || {due:.60, weak:.20, nw:.20};
-
-  var nDue  = Math.round(sz * q.due);
-  var nWeak = Math.round(sz * q.weak);
-  var nNew  = sz - nDue - nWeak;
-
-  var sel = [], seen = new Set();
-  function take(pool, limit) {
-    var added = 0;
-    for (var i = 0; i < pool.length && added < limit; i++) {
-      if (!seen.has(pool[i].id)) { seen.add(pool[i].id); sel.push(pool[i]); added++; }
-    }
-  }
-  take(dueWords,  nDue);
-  take(weakWords, nWeak);
-  take(newWords,  nNew);
-  // Vul tekort aan met beste resterende kaarten
-  if (sel.length < sz) {
-    var rest = allActive.filter(function(c){ return !seen.has(c.id); })
-      .sort(function(a,b){ return personalDiff(b)-personalDiff(a) || a.box-b.box; });
-    take(rest, sz - sel.length);
-  }
-  shuffle(sel);
-  return sel;
-}
 
 // Bereken concrete eisen voor het volgende niveau
 function getNextLevelRequirements() {
@@ -1080,8 +902,10 @@ function renderSessionCard() {
     needsInput = (ct === 'sentence' || ct === 'pattern' || ct === 'phrase');
   }
   if (needsInput) {
-    var plHolder = isListen ? 'Typ in het Nederlands...' : isSentenceMode ? 'Typ de Poolse zin...' : 'Typ in het Pools...';
-    var needsPolishChars = !isListen; // Typ- en zinnen-modus: Poolse tekens nuttig
+    // Het antwoord is Nederlands als de vraag Pools is (luisteren, of slimme mix in PL→NL)
+    var answerIsDutch = isListen || sess.dir === 'pl-nl';
+    var plHolder = answerIsDutch ? 'Typ in het Nederlands...' : isSentenceMode ? 'Typ de Poolse zin...' : 'Typ in het Pools...';
+    var needsPolishChars = !answerIsDutch; // Poolse tekens alleen nuttig als je Pools typt
     ta.style.display = 'block';
     ta.innerHTML =
       '<div style="display:flex;gap:8px;margin-bottom:8px">'
@@ -1143,7 +967,7 @@ function showAnswer() {
 
 function showInfoArea(c) {
   var ia = document.getElementById('sess-info-area'); ia.style.display = 'block'; var html = '';
-  if (settings.showExamples) html += '<div class="example-box" style="position:relative"><button onclick="speak(\''+c.ex_pl.replace(/'/g,"\\'")+'\')" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">♪</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>';
+  if (settings.showExamples && c.ex_pl) html += '<div class="example-box" style="position:relative"><button onclick="speak(\''+c.ex_pl.replace(/'/g,"\\'")+'\')" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:14px;cursor:pointer;color:var(--blue)">♪</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+(c.ex_nl||'')+'</div></div>';
   if (settings.showGrammar && c.gram) html += '<div class="grammar-box"><div class="title">Grammatica</div><div class="body">'+c.gram+'</div></div>';
   ia.innerHTML = html; ia.className = 'anim-slide';
 }
@@ -1152,12 +976,8 @@ function submitTyped() {
   var inp = document.getElementById('type-input'); if (!inp || !inp.value.trim()) return;
   var c = sess.cards[sess.idx], answer = sess.dir === 'pl-nl' ? c.nl : c.pl;
   var typed = inp.value.trim();
-  var normInput  = normalizeAnswer(typed);
-  var normTarget = normalizeAnswer(answer.split('/')[0].trim());
-  var exact = normTarget === normInput;
-  var threshold = Math.max(1, Math.floor(normTarget.length * .2));
-  var fuzzy = !exact && levenshtein(normTarget, normInput) <= threshold;
-  var correct = exact || fuzzy;
+  var g = gradeAnswer(answer, typed);
+  var correct = g.correct, exact = g.exact, normTarget = g.normTarget, normInput = g.normInput;
   // Diacritics-hint: bijna goed op accenten na
   var hint = null;
   if (!correct && sess.dir === 'nl-pl') {
@@ -1206,6 +1026,8 @@ function handleAnswer(correct) {
   if (ci >= 0) cards[ci] = correct ? SRS.promote(cards[ci], sess.mode) : SRS.demote(cards[ci], sess.mode);
   if (!sess.isRetry) { sess.totalCount++; if (correct) sess.correctCount++; }
   if (!correct && !sess.wrong.find(function(w){return w.id===c.id;})) sess.wrong.push(c);
+  // Nieuwe dag begonnen terwijl de app open stond: dagtellers eerst op nul
+  if (!sess.isRetry && stats.todayDate !== dateStr()) { stats.todayReviews = 0; stats.todayCorrect = 0; }
   if (!sess.isRetry) { stats.totalReviews++; stats.todayReviews++; if(correct) stats.todayCorrect++; stats.todayDate = dateStr(); stats.wordsLearned = cards.filter(function(x){return x.box>=3;}).length; }
   document.getElementById('sess-card').className = correct ? 'anim-correct' : 'anim-wrong';
   save('cards', cards); save('stats', stats);
@@ -1255,8 +1077,7 @@ function renderResult() {
   var ringColor = pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--yellow)' : 'var(--red)';
   document.getElementById('res-ring').setAttribute('stroke', ringColor);
   setTimeout(function(){ document.getElementById('res-ring').setAttribute('stroke-dasharray', (pct/100*390)+' 390'); }, 100);
-  var mastered = cards.filter(function(c){return c.box>=3;}).length;
-  var sessionTime = Math.round(sess.totalCount * 0.5);
+  var sessionTime =Math.round(sess.totalCount * 0.5);
   document.getElementById('res-stats').innerHTML =
     '<div class="stat-box"><div class="val" style="color:var(--green)">'+sess.correctCount+'</div><div class="label">Goed</div></div>'
     +'<div class="stat-box"><div class="val" style="color:var(--red)">'+(sess.totalCount-sess.correctCount)+'</div><div class="label">Fout</div></div>'
@@ -1280,12 +1101,14 @@ function renderResult() {
   var hardInSession = Array.from(sessionIds).map(function(id){ return cards.find(function(c){return c.id===id;}); })
     .filter(function(c){ return c && (c.misses||0)>=1 && personalDiff(c)>=0.3; })
     .sort(function(a,b){ return personalDiff(b)-personalDiff(a); }).slice(0,3);
+  var hardEl = document.getElementById('res-hard');
+  hardEl.innerHTML = '';
   if (hardInSession.length) {
-    var hwHtml = '<div style="background:var(--red-soft);border-radius:16px;padding:14px 16px;margin-bottom:14px;border:1px solid rgba(200,85,75,.2)">'
+    var hwHtml ='<div style="background:var(--red-soft);border-radius:16px;padding:14px 16px;margin-bottom:14px;border:1px solid rgba(200,85,75,.2)">'
       +'<div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px">Opnieuw inplannen</div>'
       + hardInSession.map(function(c){ return '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">• <strong style="color:var(--text)">'+c.pl+'</strong> — '+c.nl+'</div>'; }).join('')
       +'</div>';
-    document.getElementById('res-daily').insertAdjacentHTML('beforebegin', hwHtml);
+    hardEl.innerHTML = hwHtml;
   }
   var done = stats.todayReviews, goal = settings.dailyGoal, reached = done >= goal;
   document.getElementById('res-daily').innerHTML =
@@ -1528,8 +1351,9 @@ function renderWords() {
     var fc=(c.modeStats||{}).flashcard||0, tc=(c.modeStats||{}).type||0;
     var promo = (mis>0&&needed>1) ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;border-radius:8px;background:var(--accent-soft);border:1px solid rgba(217,84,59,.2);font-size:11px;color:var(--accent)"><span>Promotie: '+(c.streak||0)+'/'+needed+' goed nodig</span><div style="display:flex;gap:3px;margin-left:auto">'+Array.from({length:needed}).map(function(_,i){return '<div style="width:8px;height:8px;border-radius:4px;background:'+(i<(c.streak||0)?'var(--accent)':'rgba(217,84,59,.2)')+'"></div>';}).join('')+'</div></div>' : '';
     var safePl = c.pl.replace(/'/g,"\\'");
+    var safeEx = (c.ex_pl||'').replace(/'/g,"\\'");
     var boxBadge = '<span style="font-size:10px;font-family:var(--mono);font-weight:600;color:var(--text-muted);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:1px 5px">'+c.box+'</span>';
-    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+typeBadge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:13px;cursor:pointer;padding:2px 4px;color:var(--blue)">♪</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div>'+boxBadge+'</div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">flash '+fc+'×</div><div class="mode-badge">type '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--blue)">♪</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
+    return '<div class="word-item '+(mis>3?'trouble':'')+'" onclick="this.querySelector(\'.word-detail\').style.display=this.querySelector(\'.word-detail\').style.display===\'none\'?\'block\':\'none\'"><div style="display:flex;justify-content:space-between;align-items:center"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">'+c.pl+'</span>'+badge+typeBadge+'<button onclick="speak(\''+safePl+'\');event.stopPropagation()" style="background:none;border:none;font-size:13px;cursor:pointer;padding:2px 4px;color:var(--blue)">♪</button></div><div style="font-size:13px;color:var(--text-muted)">'+c.nl+'</div></div><div style="display:flex;align-items:center;gap:8px">'+pdDot+'<div style="display:flex;gap:2px">'+bars+'</div>'+boxBadge+'</div></div><div class="word-detail" style="display:none;margin-top:12px"><div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap"><span>Reviews: '+c.reviews+'</span><span>Streak: '+c.streak+'×</span><span>Fout: '+mis+'×</span><span>Box: '+c.box+'/6</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="mode-badge">flash '+fc+'×</div><div class="mode-badge">type '+tc+'×</div></div>'+promo+'<div class="example-box" style="position:relative"><button onclick="speak(\''+safeEx+'\');event.stopPropagation()" style="position:absolute;top:8px;right:10px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--blue)">♪</button><div class="pl">'+c.ex_pl+'</div><div class="nl">'+c.ex_nl+'</div></div>'+(c.gram?'<div class="grammar-box"><div class="title">Grammatica</div><div class="body">'+c.gram+'</div></div>':'')+'</div></div>';
   }).join('');
 }
 
@@ -1625,10 +1449,9 @@ function deleteCustomWord(id) {
   customWords = customWords.filter(function(w){ return w.id !== id; });
   cards = cards.filter(function(c){ return c.id !== id; });
   save('custom_words', customWords); save('cards', cards);
-  if (sb && sbUser) {
-    sb.from('user_words').delete().eq('user_id', sbUser.id).eq('local_id', id).then(function(){});
-    sb.from('user_cards').delete().eq('user_id', sbUser.id).eq('word_id', id).then(function(){});
-  }
+  // Onthoud de verwijdering tot de cloud hem heeft verwerkt (sbSyncUp doet dat),
+  // anders komt het woord bij de volgende synchronisatie weer terug.
+  save('deleted_custom_ids', (load('deleted_custom_ids') || []).concat([id]));
   sbSyncUp();
   showScreen('manage-words'); renderManageWords();
 }
@@ -1751,6 +1574,7 @@ function saveSettings() {
 function resetAllData() {
   if (!confirm('Weet je zeker dat je alle voortgang wilt resetten? Dit kan niet ongedaan worden.')) return;
   cards = WORD_DB.filter(function(w){return !w.pool;}).map(function(w){return makeCard(w);});
+  mergeCustomWordsIntoCards(); // eigen woorden blijven bestaan, alleen hun voortgang begint opnieuw
   stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:dateStr()};
   save('cards', cards); save('stats', stats);
   if (sb && sbUser) {
@@ -1765,7 +1589,7 @@ function resetAllData() {
 // EXPORT / IMPORT
 // ═══════════════════════════════════════
 function exportData() {
-  var data = { version: 2, exportDate: new Date().toISOString(), cards: cards, stats: stats, settings: settings };
+  var data = { version: 3, exportDate: new Date().toISOString(), cards: cards, stats: stats, settings: settings, customWords: customWords };
   var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a'); a.href = url; a.download = 'polski-leraar-backup-'+dateStr()+'.json';
@@ -1778,10 +1602,23 @@ function importData(event) {
     try {
       var data = JSON.parse(e.target.result);
       if (!data.cards || !data.stats) { alert('Ongeldig bestand.'); return; }
-      if (!confirm('Importeer '+data.cards.length+' woorden? Dit vervangt je huidige voortgang.')) return;
+      if (!confirm('Importeer '+data.cards.length+' woorden? Dit vervangt je huidige voortgang'+(sbUser?', ook in de cloud':'')+'.')) return;
       cards = data.cards; stats = data.stats;
       if (data.settings) settings = Object.assign({}, settings, data.settings);
+      if (Array.isArray(data.customWords)) {
+        // Eigen woorden uit de backup vervangen de huidige; wat verdwijnt moet ook uit de cloud
+        var keepIds = new Set(data.customWords.map(function(w){ return w.id; }));
+        var removed = customWords.filter(function(w){ return !keepIds.has(w.id); }).map(function(w){ return w.id; });
+        var deleted = (load('deleted_custom_ids') || []).concat(removed).filter(function(id){ return !keepIds.has(id); });
+        save('deleted_custom_ids', deleted);
+        customWords = data.customWords;
+        save('custom_words', customWords);
+        var maxId = customWords.reduce(function(m,w){ return Math.max(m, w.id||0); }, 0);
+        if (maxId >= (load('next_custom_id') || 10000)) save('next_custom_id', maxId + 1);
+      }
+      mergeCustomWordsIntoCards();
       save('cards', cards); save('stats', stats); save('settings', settings);
+      if (sbUser) { save('replace_cloud', true); sbReplaceCloud(); }
       showScreen('home'); alert('✓ Import gelukt!');
     } catch(err) { alert('Fout bij importeren: ' + err.message); }
   };
@@ -1901,7 +1738,7 @@ async function savePushSubscription(sub) {
 }
 
 // ── Reminders ──────────────────────────────────────────────────────────────
-var reminderTimer = null;
+// De melding zelf komt van de server (Edge Function send-reminders) via sw.js.
 
 function toggleReminder(el) {
   if (!el.classList.contains('on')) {
@@ -1919,30 +1756,15 @@ function toggleReminder(el) {
       // Probeer push subscription op te zetten
       var sub = await subscribeToPush();
       await savePushSubscription(sub);
-      scheduleReminder(); save('settings', settings); updateReminderStatus();
+      save('settings', settings); updateReminderStatus();
+      sbSyncUp();
     });
   } else {
     el.classList.remove('on'); settings.reminderEnabled = false;
     document.getElementById('remind-time-row').style.display = 'none';
-    if (reminderTimer) clearTimeout(reminderTimer);
     save('settings', settings); updateReminderStatus();
+    sbSyncUp(); // de server stuurt de pushmelding: die moet weten dat de reminder uit staat
   }
-}
-
-function scheduleReminder() {
-  if (reminderTimer) clearTimeout(reminderTimer);
-  if (!settings.reminderEnabled) return;
-  var parts = settings.reminderTime.split(':'), h = parseInt(parts[0]), m = parseInt(parts[1]);
-  var now = new Date(), target = new Date(); target.setHours(h, m, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 1);
-  // Fallback: setTimeout voor als de app toevallig open is op het juiste moment
-  reminderTimer = setTimeout(function() {
-    var done = stats.todayDate === dateStr() ? stats.todayReviews : 0;
-    if (done < settings.dailyGoal) {
-      new Notification('🇵🇱 Pools oefenen!', { body: 'Je hebt nog '+(settings.dailyGoal - done)+' woorden te gaan vandaag.', tag: 'polski-reminder' });
-    }
-    scheduleReminder();
-  }, target - now);
 }
 
 function updateReminderStatus() {
@@ -1958,12 +1780,15 @@ function updateReminderStatus() {
   if (noPerm) {
     statusHtml = '<strong>Geen toestemming</strong> voor notificaties.<br>'
       + '<span style="color:var(--text-muted)">Sta notificaties toe via Safari-instellingen → Websites → Meldingen.</span>';
+  } else if (!sbUser) {
+    statusHtml = '<strong>Log in</strong> om herinneringen te ontvangen.'
+      + '<br><span style="color:var(--text-muted)">De melding wordt door de server verstuurd; daarvoor is een account nodig (zie Account &amp; Sync hieronder).</span>';
   } else if (pushOk && hasPerm) {
-    statusHtml = '<strong style="color:var(--green)">Push actief</strong> — je ontvangt een melding om <strong>'+settings.reminderTime+'</strong>, ook als de app gesloten is.'
+    statusHtml = '<strong style="color:var(--green)">Push actief</strong> — je ontvangt een melding rond <strong>'+settings.reminderTime+'</strong> (binnen een kwartier), ook als de app gesloten is.'
       + '<br><span style="color:var(--text-muted)">Vereist: iOS 16.4+, app op beginscherm.</span>';
   } else if (!pushOk) {
     statusHtml = 'Herinnering om <strong>'+settings.reminderTime+'</strong> ingesteld.'
-      + '<br><span style="color:var(--yellow)">Push werkt alleen als de app op het beginscherm staat (iOS 16.4+). Melding nu alleen als Safari open is.</span>';
+      + '<br><span style="color:var(--yellow)">Meldingen werken alleen als de app op het beginscherm staat (iOS 16.4+). Tot die tijd komt er geen melding.</span>';
   } else {
     statusHtml = 'Herinnering om <strong>'+settings.reminderTime+'</strong> — toestemming vereist.';
   }
@@ -2051,15 +1876,7 @@ function updateDailyHistory() {
   save('daily_history', history);
 }
 
-function normalizeAnswer(s) {
-  return (s||'').toLowerCase().trim()
-    .replace(/[.,!?;:"""„]/g, '').replace(/\s+/g, ' ');
-}
 
-function stripPolishDiacritics(s) {
-  return s.replace(/ą/g,'a').replace(/ć/g,'c').replace(/ę/g,'e').replace(/ł/g,'l')
-          .replace(/ń/g,'n').replace(/ó/g,'o').replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z');
-}
 
 function getCardType(c) {
   var cw = customWords.find(function(w){ return w.id === c.id; });
@@ -2068,13 +1885,6 @@ function getCardType(c) {
   return (db && db.type) || 'word';
 }
 
-function levenshtein(a, b) {
-  var m = a.length, n = b.length, dp = [];
-  for (var i = 0; i <= m; i++) { dp[i] = [i]; for (var j = 1; j <= n; j++) dp[i][j] = 0; }
-  for (var j = 1; j <= n; j++) dp[0][j] = j;
-  for (var i = 1; i <= m; i++) for (var j = 1; j <= n; j++) dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
-  return dp[m][n];
-}
 
 // ═══════════════════════════════════════
 // SYNC STATUS
@@ -2126,6 +1936,7 @@ function updateSyncBadge() {
 
 async function retryPendingSync() {
   if (!sbUser || !syncPending) return;
+  if (load('replace_cloud')) { await sbReplaceCloud(); return; }
   await sbSyncUp();
 }
 
@@ -2156,9 +1967,16 @@ async function initSupabase() {
     // Geen sessie → gewoon op home blijven (localStorage fallback)
     sb.auth.onAuthStateChange(async function(event, session) {
       if (event === 'SIGNED_IN' && session) {
+        // Supabase meldt SIGNED_IN ook als de app weer naar voren komt. Alleen bij
+        // een echte nieuwe login data ophalen en naar home gaan — anders zou een
+        // lopende oefensessie worden afgebroken.
+        var isNewLogin = !sbUser || sbUser.id !== session.user.id;
         sbUser = session.user;
-        await sbSyncDown();
-        showScreen('home'); renderHome();
+        if (isNewLogin) {
+          await sbSyncDown();
+          showScreen('home');
+        }
+        return;
       } else if (event === 'SIGNED_OUT') {
         sbUser = null;
       }
@@ -2172,20 +1990,78 @@ async function initSupabase() {
 
 async function sbSyncDown() {
   if (!sb || !sbUser) return;
+  var localIsNewer = false; // lokale voortgang die de cloud nog niet heeft → na afloop omhoog sturen
   try {
+    // Ander account dan waar de gegevens op dit apparaat van zijn: begin lokaal schoon,
+    // zodat de voortgang van de vorige gebruiker niet in dit account terechtkomt.
+    var owner = load('owner');
+    if (owner && owner !== sbUser.id) {
+      cards = WORD_DB.filter(function(w){return !w.pool;}).map(function(w){return makeCard(w);});
+      stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:dateStr()};
+      customWords = [];
+      save('cards', cards); save('stats', stats); save('custom_words', customWords);
+      save('daily_history', {}); save('synced_custom_ids', []); save('deleted_custom_ids', []); save('replace_cloud', false);
+    }
+    save('owner', sbUser.id);
+
+    // Net een backup teruggezet: die vervangt de cloud, dus niets ophalen
+    if (load('replace_cloud')) { await sbReplaceCloud(); return; }
+
+    // Eigen woorden eerst, zodat de kaarten hieronder weten welke woorden bestaan
+    var { data: cwRows, error: cwErr } = await sb.from('user_words').select('*').eq('user_id', sbUser.id);
+    var deletedHere = new Set(load('deleted_custom_ids') || []);
+    if (!cwErr && cwRows) {
+      var cloudCwIds = new Set(cwRows.map(function(r){ return r.local_id; }));
+      // Stond een woord eerder in de cloud en nu niet meer, dan is het op een
+      // ander apparaat verwijderd: haal het hier ook weg (woord en voortgang).
+      var syncedBefore = new Set(load('synced_custom_ids') || []);
+      var gone = new Set(customWords.filter(function(w){ return syncedBefore.has(w.id) && !cloudCwIds.has(w.id); }).map(function(w){ return w.id; }));
+      if (gone.size) {
+        customWords = customWords.filter(function(w){ return !gone.has(w.id); });
+        cards = cards.filter(function(c){ return !gone.has(c.id); });
+        save('cards', cards);
+      }
+      // Woorden uit de cloud die hier nog ontbreken toevoegen; de lokale versie wint bij verschil
+      var localCwIds = new Set(customWords.map(function(w){ return w.id; }));
+      cwRows.forEach(function(r){
+        if (!localCwIds.has(r.local_id) && !deletedHere.has(r.local_id)) {
+          customWords.push({id:r.local_id, pl:r.pl, nl:r.nl, cat:r.cat,
+            ex_pl:r.ex_pl||'', ex_nl:r.ex_nl||'', diff:r.diff||1, gram:r.gram||'',
+            level:r.level||'A1', source:'user', active:r.active,
+            type:r.type||'word', tags:r.tags||[],
+            createdAt:new Date(r.created_at).getTime(), updatedAt:new Date(r.updated_at).getTime()});
+        }
+      });
+      save('custom_words', customWords);
+      save('synced_custom_ids', customWords.filter(function(w){ return cloudCwIds.has(w.id); }).map(function(w){ return w.id; }));
+      // Volgende id hoger dan het hoogste bekende — voorkomt botsingen op een tweede apparaat
+      var maxId = customWords.reduce(function(m,w){ return Math.max(m, w.id||0); }, 0);
+      var storedNext = load('next_custom_id') || 10000;
+      if (maxId >= storedNext) save('next_custom_id', maxId + 1);
+    }
+    function isKnownWord(id) {
+      return WORD_DB.some(function(w){return w.id===id;}) || customWords.some(function(w){return w.id===id;});
+    }
+
     // Cards
     var { data: rows, error: ce } = await sb.from('user_cards').select('*').eq('user_id', sbUser.id);
     if (!ce && rows) {
       if (rows.length > 0) {
-        // Bewaar lokale pool-woorden die nog niet in Supabase staan
-        // (bijv. toegevoegd via checkExpansion toen offline)
+        // Bewaar lokale kaarten die nog niet in Supabase staan
+        // (bijv. toegevoegd via checkExpansion of als eigen woord toen offline)
         var localSaved = load('cards') || [];
+        var localById = {};
+        localSaved.forEach(function(lc){ localById[lc.id] = lc; });
         var sbWordIds = new Set(rows.map(function(r){return r.word_id;}));
         var unsyncedPool = localSaved.filter(function(lc){
-          var dbWord = WORD_DB.find(function(w){return w.id===lc.id;});
-          return dbWord && dbWord.pool && !sbWordIds.has(lc.id);
+          return !sbWordIds.has(lc.id) && isKnownWord(lc.id);
         });
-        cards = rows.map(function(r) {
+        if (unsyncedPool.length) localIsNewer = true;
+        cards = rows.filter(function(r){ return isKnownWord(r.word_id) && !deletedHere.has(r.word_id); }).map(function(r) {
+          // Per kaart wint de laatst geoefende versie: zo gaat voortgang van een
+          // offline sessie niet verloren als de cloud nog de oude stand heeft.
+          var lc = localById[r.word_id];
+          if (lc && (lc.lastReview||0) > (parseInt(r.last_review)||0)) { localIsNewer = true; return lc; }
           var db = WORD_DB.find(function(w){return w.id===r.word_id;}) || {};
           return { id:r.word_id, pl:db.pl||'', nl:db.nl||'', cat:db.cat||'dagelijks',
             ex_pl:db.ex_pl||'', ex_nl:db.ex_nl||'', diff:db.diff||1, gram:db.gram||'',
@@ -2243,29 +2119,37 @@ async function sbSyncDown() {
         reminderEnabled:stRow.reminder_enabled, reminderTime:stRow.reminder_time };
       save('settings', settings);
     }
-    // Custom words — merge: lokale versie wint bij conflict
-    var { data: cwRows } = await sb.from('user_words').select('*').eq('user_id', sbUser.id);
-    if (cwRows && cwRows.length > 0) {
-      var localCwIds = new Set(customWords.map(function(w){ return w.id; }));
-      cwRows.forEach(function(r){
-        if (!localCwIds.has(r.local_id)) {
-          customWords.push({id:r.local_id, pl:r.pl, nl:r.nl, cat:r.cat,
-            ex_pl:r.ex_pl||'', ex_nl:r.ex_nl||'', diff:r.diff||1, gram:r.gram||'',
-            level:r.level||'A1', source:'user', active:r.active,
-            type:r.type||'word', tags:r.tags||[],
-            createdAt:new Date(r.created_at).getTime(), updatedAt:new Date(r.updated_at).getTime()});
-        }
-      });
-      save('custom_words', customWords);
-      // Zorg dat next_custom_id altijd hoger is dan hoogste bekende ID
-      // — voorkomt ID-botsingen op een tweede apparaat
-      var maxId = customWords.reduce(function(m,w){ return Math.max(m, w.id||0); }, 0);
-      var storedNext = load('next_custom_id') || 10000;
-      if (maxId >= storedNext) save('next_custom_id', maxId + 1);
-      mergeCustomWordsIntoCards();
-      save('cards', cards);
-    }
+    // Altijd: eigen woorden hun tekst teruggeven (kaarten uit de cloud bevatten alleen voortgang)
+    mergeCustomWordsIntoCards();
+    save('cards', cards);
+    if (localIsNewer) sbSyncUp();
   } catch(e) { console.warn('syncDown mislukt:', e.message); }
+}
+
+// Verwijder eigen woorden die hier zijn weggehaald ook uit de cloud.
+async function flushCustomDeletes() {
+  var ids = load('deleted_custom_ids') || [];
+  if (!ids.length || !sb || !sbUser) return;
+  var r1 = await sb.from('user_words').delete().eq('user_id', sbUser.id).in('local_id', ids);
+  var r2 = await sb.from('user_cards').delete().eq('user_id', sbUser.id).in('word_id', ids);
+  if (!r1.error && !r2.error) save('deleted_custom_ids', []);
+}
+
+// Laat de lokale stand de cloud volledig vervangen (na het terugzetten van een backup).
+// De markering 'replace_cloud' blijft staan tot het gelukt is, zodat het ook na een
+// import zonder verbinding alsnog gebeurt.
+async function sbReplaceCloud() {
+  if (!sb || !sbUser) return;
+  if (!navigator.onLine) { setSyncStatus('pending'); return; }
+  try {
+    var r = await sb.from('user_cards').delete().eq('user_id', sbUser.id);
+    if (r.error) throw r.error;
+    await sbSyncUp();
+    if (syncStatus === 'success') save('replace_cloud', false);
+  } catch(e) {
+    setSyncStatus('failed');
+    console.warn('Cloud vervangen mislukt:', e.message);
+  }
 }
 
 async function sbSyncUp() {
@@ -2281,6 +2165,7 @@ async function sbSyncUp() {
   }, 8000);
 
   try {
+    await flushCustomDeletes();
     var cardRows = cards.map(function(c) {
       return { user_id:sbUser.id, word_id:c.id, box:c.box, last_review:c.lastReview,
         reviews:c.reviews, streak:c.streak, misses:c.misses||0,
@@ -2319,6 +2204,7 @@ async function sbSyncUp() {
       var r4 = await sb.from('user_words').upsert(wordRows, {onConflict:'user_id,local_id'});
       if (r4.error) throw r4.error;
     }
+    save('synced_custom_ids', customWords.map(function(w){ return w.id; }));
     if (!done) { done = true; clearTimeout(timer); setSyncStatus('success'); }
   } catch(e) {
     if (!done) { done = true; clearTimeout(timer); setSyncStatus('failed'); }
@@ -2331,6 +2217,7 @@ async function sbSignIn() {
   var email = document.getElementById('auth-email').value.trim();
   var pw = document.getElementById('auth-pw').value;
   if (!email || !pw) { sbAuthMsg('Vul je e-mailadres en wachtwoord in.'); return; }
+  if (!sb) { sbAuthMsg('Geen verbinding met de server. Controleer je internet en herlaad de app.'); return; }
   sbAuthLoading(true);
   var { error } = await sb.auth.signInWithPassword({email:email, password:pw});
   sbAuthLoading(false);
@@ -2342,6 +2229,7 @@ async function sbSignUp() {
   var pw = document.getElementById('auth-pw').value;
   if (!email || !pw) { sbAuthMsg('Vul je e-mailadres en wachtwoord in.'); return; }
   if (pw.length < 6) { sbAuthMsg('Wachtwoord moet minstens 6 tekens zijn.'); return; }
+  if (!sb) { sbAuthMsg('Geen verbinding met de server. Controleer je internet en herlaad de app.'); return; }
   sbAuthLoading(true);
   var { data, error } = await sb.auth.signUp({email:email, password:pw});
   sbAuthLoading(false);
@@ -2370,13 +2258,13 @@ function sbAuthLoading(on) {
 // INIT
 // ═══════════════════════════════════════
 initData(); renderHome();
-if (settings.reminderEnabled) scheduleReminder();
 initPolishVoice();
 initServiceWorker();
 initSupabase();
 document.getElementById('set-remind-time').addEventListener('change', function() {
   settings.reminderTime = document.getElementById('set-remind-time').value;
-  save('settings', settings); if (settings.reminderEnabled) scheduleReminder(); updateReminderStatus();
+  save('settings', settings); updateReminderStatus();
+  sbSyncUp(); // nieuw tijdstip ook naar de server, anders komt de pushmelding op het oude tijdstip
 });
 ['set-daily','set-session','set-direction','set-mix'].forEach(function(id) { document.getElementById(id).addEventListener('change', saveSettings); });
 window.addEventListener('online',  function() { updateSyncBadge(); retryPendingSync(); });

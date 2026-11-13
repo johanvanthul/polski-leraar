@@ -5,13 +5,14 @@
 alter table user_settings
   add column if not exists push_subscription text;
 
--- 2. pg_cron instellen: roep Edge Function elk uur aan (op het hele uur)
+-- 2. pg_cron instellen: roep Edge Function elk kwartier aan
+-- (de functie stuurt een melding als het ingestelde tijdstip in het afgelopen kwartier viel)
 -- Vereist: pg_cron extension (standaard actief in Supabase)
 -- Vereist: pg_net extension (voor HTTP-aanroepen vanuit SQL)
 
 select cron.schedule(
   'send-push-reminders',
-  '0 * * * *',   -- elk uur op het hele uur
+  '*/15 * * * *',   -- elk kwartier
   $$
   select net.http_post(
     url     := 'https://elcrpgsiyiehxjoerkiu.supabase.co/functions/v1/send-reminders',

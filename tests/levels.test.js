@@ -1,39 +1,11 @@
-// Level Engine tests
-// Kopie van LEVEL.compute() logica uit index.html
+// Level Engine tests — testen de echte LEVEL uit core.js
 
 group('Level Engine — drempelwaarden');
 
-var LEVEL_THRESHOLDS = {
-  A1: { mastered: 10, avgBox: 1.2, errorRate: 0.55 },
-  A2: { mastered: 25, avgBox: 2.0, errorRate: 0.40 },
-  B1: { mastered: 40, avgBox: 3.0, errorRate: 0.25 },
-};
-
-var LEVEL_DEFS = [
-  { code: 'A0', label: 'Absolute Beginner' },
-  { code: 'A1', label: 'Beginner' },
-  { code: 'A2', label: 'Elementair' },
-  { code: 'B1', label: 'Drempelwaarde' },
-];
-
-function computeLevel(cards) {
-  var reviewed = cards.filter(function(c) { return c.reviews > 0; });
-  var mastered  = cards.filter(function(c) { return c.box >= 3; }).length;
-  if (!reviewed.length) return 'A0';
-
-  var avgBox    = reviewed.reduce(function(s, c) { return s + c.box; }, 0) / reviewed.length;
-  var totalRev  = reviewed.reduce(function(s, c) { return s + c.reviews; }, 0);
-  var totalMiss = reviewed.reduce(function(s, c) { return s + (c.misses || 0); }, 0);
-  var errorRate = totalRev ? totalMiss / totalRev : 1;
-
-  var code = 'A0';
-  ['A1', 'A2', 'B1'].forEach(function(lvl) {
-    var t = LEVEL_THRESHOLDS[lvl];
-    if (mastered >= t.mastered && avgBox >= t.avgBox && errorRate <= t.errorRate) {
-      code = lvl;
-    }
-  });
-  return code;
+// LEVEL.compute() rekent met de globale variabele `cards`
+function computeLevel(testCards) {
+  cards = testCards;
+  return LEVEL.compute().code;
 }
 
 function makeCards(n, overrides) {

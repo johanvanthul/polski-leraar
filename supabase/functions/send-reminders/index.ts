@@ -1,13 +1,17 @@
 // Polski Leraar — Supabase Edge Function: send-reminders
-// Wordt elk uur aangeroepen via pg_cron (0 * * * *).
-// Stuurt Web Push naar gebruikers waarvan het reminder-tijdstip ±10 min geleden is
-// én die hun dagelijks doel nog niet gehaald hebben.
+// Wordt elk kwartier aangeroepen via pg_cron (*/15 * * * *).
+// Stuurt Web Push naar gebruikers waarvan het reminder-tijdstip in het afgelopen
+// kwartier viel én die hun dagelijks doel nog niet gehaald hebben.
+// Elk tijdstip valt in precies één kwartier, dus er komt één melding per dag.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import webPush from 'npm:web-push@3.6.7';
 
 // ─── Tijdzone ──────────────────────────────────────────────────────────────
 const TZ = 'Europe/Amsterdam';
+
+// Moet gelijk zijn aan het interval van de geplande taak (zie schema-push.sql)
+const WINDOW_MIN = 15;
 
 function amsterdamNow(): { h: number; m: number } {
   const parts = new Intl.DateTimeFormat('nl-NL', {
@@ -87,13 +91,13 @@ Deno.serve(async (_req) => {
     const [rh, rm] = s.reminder_time.split(':').map(Number);
     const currentMin = local.h * 60 + local.m;
     const targetMin  = rh * 60 + rm;
-    const rawDiff    = Math.abs(currentMin - targetMin);
-    const diffMin    = Math.min(rawDiff, 1440 - rawDiff);
+    // Minuten sinds het ingestelde tijdstip (0–1439, rekent door over middernacht)
+    const diffMin    = (currentMin - targetMin + 1440) % 1440;
 
-    log.push(`${uid}: reminder=${s.reminder_time}, nu=${local.h}:${String(local.m).padStart(2,'0')}, verschil=${diffMin}min`);
+    log.push(`${uid}: reminder=${s.reminder_time}, nu=${local.h}:${String(local.m).padStart(2,'0')}, sinds reminder=${diffMin}min`);
 
-    if (diffMin > 10) {
-      log.push(`  → buiten ±10min venster, overgeslagen`);
+    if (diffMin >= WINDOW_MIN) {
+      log.push(`  → niet in het afgelopen kwartier, overgeslagen`);
       continue;
     }
 

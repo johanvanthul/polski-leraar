@@ -1,39 +1,6 @@
-// SRS Engine tests
-// Kopie van de kernlogica uit index.html — puur voor testdoeleinden
+// SRS Engine tests — testen de echte SRS uit core.js
 
 group('SRS — Promotie en demotie');
-
-var SRS = {
-  intervals: [0, 1, 3, 7, 14, 30, 60],
-  getNextReview: function(c) {
-    var iv  = this.intervals[Math.min(c.box, 6)];
-    var mf  = (c.misses||0) > 3 ? .5 : (c.misses||0) > 1 ? .75 : 1;
-    var base = c.lastReview + Math.floor(iv * mf) * 864e5;
-    var cooldown = (c.box === 0 && c.lastReview > 0) ? c.lastReview + 4 * 36e5 : 0;
-    return Math.max(base, cooldown);
-  },
-  requiredStreak: function(m) {
-    return m >= 5 ? 4 : m >= 3 ? 3 : m >= 1 ? 2 : 1;
-  },
-  promote: function(c) {
-    var ns = c.streak + 1;
-    var needed = this.requiredStreak(c.misses || 0);
-    if (ns >= needed) {
-      return Object.assign({}, c, {
-        box: Math.min(c.box + 1, 6), lastReview: Date.now(),
-        reviews: c.reviews + 1, streak: ns,
-        misses: Math.max((c.misses||0) - 1, 0)
-      });
-    }
-    return Object.assign({}, c, { lastReview: Date.now(), reviews: c.reviews + 1, streak: ns });
-  },
-  demote: function(c) {
-    return Object.assign({}, c, {
-      box: Math.max(c.box - 2, 0), lastReview: Date.now(),
-      reviews: c.reviews + 1, streak: 0, misses: (c.misses||0) + 1
-    });
-  }
-};
 
 function makeCard(overrides) {
   return Object.assign({ id: 1, box: 0, lastReview: 0, reviews: 0, streak: 0, misses: 0 }, overrides);
@@ -41,33 +8,33 @@ function makeCard(overrides) {
 
 test('correct antwoord zonder fouten → box omhoog', function() {
   var c = makeCard({ box: 0, streak: 0, misses: 0 });
-  var r = SRS.promote(c);
+  var r = SRS.promote(c, 'flashcard');
   assertEqual(r.box, 1, 'box moet van 0 naar 1');
 });
 
 test('correct antwoord met 1 miss → streak omhoog maar box pas na 2× goed', function() {
   var c = makeCard({ box: 1, streak: 0, misses: 1 });
-  var r = SRS.promote(c);
+  var r = SRS.promote(c, 'flashcard');
   assertEqual(r.box, 1, 'box mag nog niet omhoog (streak = 1, nodig = 2)');
-  var r2 = SRS.promote(r);
+  var r2 = SRS.promote(r, 'flashcard');
   assertEqual(r2.box, 2, 'box moet omhoog na 2× goed');
 });
 
 test('fout antwoord → box daalt met 2', function() {
   var c = makeCard({ box: 3 });
-  var r = SRS.demote(c);
+  var r = SRS.demote(c, 'flashcard');
   assertEqual(r.box, 1, 'box moet van 3 naar 1');
 });
 
 test('box gaat nooit onder 0', function() {
   var c = makeCard({ box: 0 });
-  var r = SRS.demote(c);
+  var r = SRS.demote(c, 'flashcard');
   assertEqual(r.box, 0, 'box moet minimaal 0 zijn');
 });
 
 test('box gaat nooit boven 6', function() {
   var c = makeCard({ box: 6, streak: 0, misses: 0 });
-  var r = SRS.promote(c);
+  var r = SRS.promote(c, 'flashcard');
   assertEqual(r.box, 6, 'box moet maximaal 6 zijn');
 });
 
@@ -80,20 +47,20 @@ test('misses verhogen required streak', function() {
 
 test('fout antwoord verhoogt misses', function() {
   var c = makeCard({ misses: 0 });
-  var r = SRS.demote(c);
+  var r = SRS.demote(c, 'flashcard');
   assertEqual(r.misses, 1, 'misses moet 1 zijn na fout antwoord');
 });
 
 test('correct antwoord bij misses>0 verlaagt misses met 1 bij promotie', function() {
   var c = makeCard({ box: 0, streak: 1, misses: 2 });
-  var r = SRS.promote(c); // streak wordt 2, needed=2 → promoveer
+  var r = SRS.promote(c, 'flashcard'); // streak wordt 2, needed=2 → promoveer
   assertEqual(r.box, 1);
   assertEqual(r.misses, 1, 'misses moet met 1 afnemen bij promotie');
 });
 
 test('demote reset streak naar 0', function() {
   var c = makeCard({ streak: 3 });
-  var r = SRS.demote(c);
+  var r = SRS.demote(c, 'flashcard');
   assertEqual(r.streak, 0, 'streak moet gereset worden na fout');
 });
 

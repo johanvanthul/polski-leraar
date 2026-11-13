@@ -45,7 +45,10 @@ create table if not exists user_settings (
   show_examples    boolean not null default true,
   reminder_enabled boolean not null default false,
   reminder_time    text    not null default '20:00',
-  auto_speak       boolean not null default true
+  auto_speak       boolean not null default true,
+  session_mix      text    not null default 'balanced'
 );
+-- Bestond de tabel al zonder session_mix? Dan voegt deze regel de kolom alsnog toe.
+alter table user_settings add column if not exists session_mix text not null default 'balanced';
 alter table user_settings enable row level security;
 create policy "Own settings" on user_settings for all using (auth.uid() = user_id);

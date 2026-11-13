@@ -1,0 +1,12 @@
+# macOS-mapinstellingen
+.DS_Store
+
+# Tijdelijke bestanden van de Supabase CLI (lokale koppeling met het project)
+supabase/.temp/
+
+# Persoonlijke Claude Code-instellingen voor deze computer
+.claude/settings.local.json
+
+# Afgeronde werkstukken: blijven op deze computer, niet in de publieke repo
+design_handoff_redesign/
+POLSKI_LERAAR_verbeterprompt.md

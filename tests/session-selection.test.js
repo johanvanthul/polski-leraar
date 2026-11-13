@@ -1,11 +1,6 @@
-// Session selection tests
-// Test de buildSessionCards-logica losstaand van de app-globals
+// Session selection tests — testen de echte buildSessionCards() uit core.js
 
 group('personalDiff — berekening');
-
-function personalDiff(c) {
-  return c.reviews > 0 ? (c.misses || 0) / c.reviews : 0;
-}
 
 test('nooit geoefend → personalDiff = 0', function() {
   assertEqual(personalDiff({ reviews: 0, misses: 0 }), 0);
@@ -25,50 +20,13 @@ test('50% fout → personalDiff = 0.5', function() {
 
 group('Session selectie — geen duplicaten');
 
-// Vereenvoudigde versie van buildSessionCards voor tests
+// Roept de echte buildSessionCards() uit core.js aan met een eigen set kaarten
 function buildSessionTest(allCards, sz, mix) {
-  mix = mix || 'balanced';
-  var now = Date.now();
-
-  var getNextReview = function(c) {
-    var base = c.lastReview + [0,86400000,3*86400000][Math.min(c.box,2)];
-    var cooldown = (c.box === 0 && c.lastReview > 0) ? c.lastReview + 4*3600000 : 0;
-    return Math.max(base, cooldown);
-  };
-
-  var dueWords  = allCards.filter(function(c) { return getNextReview(c) <= now; })
-    .sort(function(a,b) { return personalDiff(b)-personalDiff(a) || a.box-b.box; });
-  var weakWords = allCards.filter(function(c) {
-    return getNextReview(c) > now && ((c.misses||0) >= 2 || (c.reviews>0 && personalDiff(c)>=0.3));
-  });
-  var newWords  = allCards.filter(function(c) { return c.reviews === 0; });
-
-  var quotas = {
-    balanced:     { due: 0.60, weak: 0.20, nw: 0.20 },
-    'review-heavy': { due: 0.80, weak: 0.15, nw: 0.05 },
-    'new-heavy':  { due: 0.40, weak: 0.20, nw: 0.40 },
-    'weak-words': { due: 0.40, weak: 0.50, nw: 0.10 },
-  }[mix] || { due: 0.60, weak: 0.20, nw: 0.20 };
-
-  var nDue  = Math.round(sz * quotas.due);
-  var nWeak = Math.round(sz * quotas.weak);
-  var nNew  = sz - nDue - nWeak;
-
-  var sel = [], seen = new Set();
-  function take(pool, limit) {
-    var added = 0;
-    for (var i = 0; i < pool.length && added < limit; i++) {
-      if (!seen.has(pool[i].id)) { seen.add(pool[i].id); sel.push(pool[i]); added++; }
-    }
-  }
-  take(dueWords, nDue);
-  take(weakWords, nWeak);
-  take(newWords, nNew);
-  if (sel.length < sz) {
-    var rest = allCards.filter(function(c){ return !seen.has(c.id); });
-    take(rest, sz - sel.length);
-  }
-  return sel;
+  cards = allCards;
+  settings.sessionSize = sz;
+  settings.sessionMix = mix || 'balanced';
+  selectedCat = 'all';
+  return buildSessionCards('flashcard');
 }
 
 function makePool(n, overrides) {

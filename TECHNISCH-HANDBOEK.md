@@ -2,7 +2,7 @@
 
 > Dit document is jouw naslagwerk als beheerder van de app.
 > Het wordt bijgewerkt als er nieuwe features of configuratie bijkomen.
-> Laatst bijgewerkt: 13 mei 2026
+> Laatst bijgewerkt: 13 november 2026
 
 ---
 
@@ -30,7 +30,7 @@ Polski Leraar is een web-app om Poolse woordjes te leren. Het draait als website
 - **Anon public key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsY3JwZ3NpeWllaHhqb2Vya2l1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NjI4NzksImV4cCI6MjA5NDIzODg3OX0.bLlEDZFDC15ih3mfkJzq6ToSVmxUNyFXlSOCGgf1Gd8`
 - **Dashboard**: https://supabase.com/dashboard/project/elcrpgsiyiehxjoerkiu
 
-> De anon key is een *publieke* key — die mag in je code staan. De echte beveiliging zit in Row Level Security (RLS) regels in Supabase. Deel nooit je **service_role key** (die staat ook in het Supabase dashboard maar is privé).
+> De anon key is een *publieke* key — die mag in je code staan. De echte beveiliging zit in Row Level Security (RLS) regels in Supabase. De **service_role key** (staat ook in het Supabase dashboard) geeft volledige toegang tot alle gegevens, voorbij die beveiligingsregels. Hij hoort alleen in Supabase zelf te staan: plak hem niet in code, documenten of chats. Is hij toch ergens terechtgekomen, vervang hem dan via Settings → API.
 
 ### GitHub
 - **Username**: johanvanthul
@@ -90,7 +90,7 @@ Op basis van je niveau worden automatisch nieuwe woorden toegevoegd (3 per keer,
 ### Op je iPhone
 - Open Safari → ga naar https://johanvanthul.github.io/polski-leraar/
 - Of tik op het app-icoon als je "Zet op beginscherm" hebt gedaan
-- De app laadt altijd de nieuwste versie
+- De app haalt bij het openen de nieuwste versie op (ongeveer een minuut na een push)
 
 ### Inloggen (eenmalig)
 1. Open de app → tik op ⚙️ Instellingen
@@ -187,13 +187,15 @@ Ctrl+C                          # Forceer afsluiten
 |-------|--------|
 | `user_cards` | Voortgang per woord (box, reviews, fouten, streak) |
 | `user_stats` | Statistieken (streak, totaal reviews, dagelijks doel) |
-| `user_settings` | Instellingen (dagelijks doel, sessiegrootte, richting) |
+| `user_settings` | Instellingen (dagelijks doel, sessiegrootte, richting) en het push-abonnement |
+| `user_words` | Eigen woorden die je in de app hebt toegevoegd |
+| `push_log` | Logboek van elke verstuurde of mislukte pushmelding |
 
 Alle tabellen hebben **Row Level Security** — elke gebruiker ziet alleen zijn eigen rijen.
 
 ### Account beheren
 - **Bevestigingslink verlopen?** → Dashboard → Authentication → Users → klik je e-mail → "Confirm user"
-- **Wachtwoord vergeten?** → Nieuw account aanmaken of via dashboard resetten
+- **Wachtwoord vergeten?** → Dashboard → Authentication → Users → je e-mail → "Send password recovery". Een nieuw account aanmaken begint met lege voortgang.
 - **Data bekijken?** → Table Editor → kies een tabel
 
 ### Wat als Supabase niet werkt?
@@ -205,15 +207,22 @@ De app valt automatisch terug op localStorage — je kunt altijd blijven oefenen
 
 ```
 polski-leraar/
-├── index.html                  # De hele app (HTML + CSS + JavaScript)
-├── sw.js                       # Service Worker — ontvangt Web Push en toont notificaties
+├── index.html                  # De app (schermen, opmaak, bediening)
+├── core.js                     # De rekenregels (niveaus, herhaling, sessies, antwoordcontrole)
+├── sw.js                       # Service Worker — offline kopie van de app + pushmeldingen
+├── manifest.json               # Naam, icoon en kleuren voor "Zet op beginscherm"
+├── icon.png, icon-192.png      # App-icoon (512 en 192 pixels)
 ├── schema.sql                  # Supabase database schema (eenmalig uitgevoerd)
 ├── schema-push.sql             # Push-uitbreiding: push_subscription kolom + pg_cron (eenmalig)
+├── schema-autospeak.sql        # Kolom auto_speak (eenmalig)
+├── schema-pushlog.sql          # Tabel push_log (eenmalig)
+├── schema-userwords.sql        # Tabel user_words (eenmalig)
+├── tests/                      # Tests — open tests/run-tests.html in een browser
 ├── supabase/
 │   └── functions/
 │       └── send-reminders/
-│           └── index.ts        # Edge Function — stuurt push elk uur via pg_cron
-├── CLAUDE-CODE-BRIEFING.md     # Context-document voor Claude Code
+│           └── index.ts        # Edge Function — kijkt elk kwartier of er een melding uit moet
+├── CLAUDE.md                   # Werkinstructies voor Claude Code
 ├── TECHNISCH-HANDBOEK.md       # Dit document
 └── README.md                   # GitHub repo beschrijving (optioneel)
 ```
@@ -241,6 +250,7 @@ Er is een bug: [beschrijf wat er gebeurt]. Fix het.
 ### "Ik wil mijn voortgang terugzetten"
 - Open de app → ⚙️ Instellingen → **Importeer**
 - Selecteer een eerder geëxporteerd JSON-bestand
+- Ben je ingelogd, dan vervangt de backup ook je voortgang in de cloud
 
 ### "De app laadt niet"
 1. Check of GitHub Pages actief is: https://github.com/johanvanthul/polski-leraar/settings/pages
@@ -255,6 +265,7 @@ Er is een bug: [beschrijf wat er gebeurt]. Fix het.
 - Zelfde e-mailadres en wachtwoord — al je voortgang verschijnt automatisch
 
 ### "Mijn reminder/push-notificatie werkt niet"
+0. Ben je ingelogd? De melding komt van de server en die kent alleen ingelogde gebruikers. De melding komt binnen een kwartier na het ingestelde tijdstip.
 1. Check of de app op het **beginscherm** staat (niet via Safari-tab, maar via het icoontje)
 2. Check iOS versie: **16.4 of hoger** vereist voor web push
 3. Open Safari DevTools (Mac → Ontwikkelaar → jouw iPhone) → Console → schakel reminder uit en weer in → kijk naar `[SW]` en `[Push]` logs
@@ -264,7 +275,7 @@ Er is een bug: [beschrijf wat er gebeurt]. Fix het.
 ### "De Edge Function opnieuw deployen"
 ```bash
 cd ~/Projects/polski-leraar
-/tmp/supabase functions deploy send-reminders --project-ref elcrpgsiyiehxjoerkiu
+supabase functions deploy send-reminders --project-ref elcrpgsiyiehxjoerkiu
 ```
 
 ---
@@ -285,4 +296,7 @@ cd ~/Projects/polski-leraar
 | 14 mei 2026 | v3.6 | Reminders: misleidende "Push-notificatie" label verwijderd; duidelijke waarschuwing dat het alleen werkt als Safari open is |
 | 14 mei 2026 | v3.7 | Web Push via Service Worker (sw.js) + Supabase Edge Function (send-reminders); VAPID-sleutels gegenereerd; push subscription opgeslagen in Supabase |
 | 14 mei 2026 | v3.8 | Push-subscriptionbugs gefixed: race condition (swReady Promise), update→upsert, uitgebreide [SW]/[Push] debug-logging |
+| 13 november 2026 | v5.2 | Rekenregels naar `core.js` zodat de tests de echte code controleren; app opent zonder internet; backup bevat eigen woorden en wint van de cloud; verwijderd eigen woord verdwijnt op alle apparaten; typen telt elke eerdere oefening; streak zakt direct na een gemiste dag; herinnering per kwartier; kleinere iconen; oude documenten verwijderd |
+| 12 november 2026 | v5.1 | Opschoning: voortgang van offline sessies blijft behouden bij synchroniseren; zinnen-modus blijft Nederlands → Pools; elk alternatief rond "/" telt als goed antwoord; reminder uitzetten of verzetten gaat direct naar de server; dagteller begint opnieuw na middernacht; documentatie bijgewerkt |
+| juni 2026 | v4.0–v5.0 | Betrouwbare sync, slimme sessiemix, woordenlijst met zoeken en filters, eigen woorden, zinnen en patronen, tests, stille modus, nieuw licht ontwerp (zie `git log`) |
 | 14 mei 2026 | — | Edge Function timezone-fix: now.getHours() was UTC, reminder_time is Amsterdam-tijd (CEST=UTC+2); fix via Intl.DateTimeFormat('Europe/Amsterdam'); absolute tijdsverschil met middernacht-omloop; ±10min venster; volledige beslissingslog in response |

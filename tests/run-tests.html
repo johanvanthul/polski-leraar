@@ -61,9 +61,26 @@ function assertUnique(arr, keyFn) {
 }
 </script>
 
+<script>
+// ── Omgeving voor core.js ───────────────────────────────────────────────────
+// core.js verwacht deze globale variabelen (in de app komen ze uit index.html).
+var cards = [];
+var settings = { sessionSize: 10, sessionMix: 'balanced' };
+var selectedCat = 'all';
+var WORD_DB = [];
+function isCardActive() { return true; }
+function getCardType() { return 'word'; }
+</script>
+<script src="../core.js"></script>
+<script>
+// In de app wordt een sessie geschud; in de tests willen we de volgorde kunnen controleren.
+shuffle = function() {};
+</script>
+
 <script src="srs.test.js"></script>
 <script src="levels.test.js"></script>
 <script src="session-selection.test.js"></script>
+<script src="answers.test.js"></script>
 
 <script>
 // ── Resultaten renderen ────────────────────────────────────────────────────
