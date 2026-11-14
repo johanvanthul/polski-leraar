@@ -8,7 +8,7 @@ Johan is beginnend programmeur en gebruikt de app dagelijks op zijn iPhone. Schr
 
 ## Publiceren
 
-De app bestaat uit `index.html` (schermen, opmaak en bediening) en `core.js` (de rekenregels) op GitHub Pages. Er is geen buildstap, geen package manager en geen bundler. Een push naar `main` staat binnen ongeveer een minuut live op Johans telefoon.
+De app bestaat uit `index.html` (schermen, opmaak en bediening), `core.js` (de rekenregels) en `stories.js` (de verhalen) op GitHub Pages. Er is geen buildstap, geen package manager en geen bundler. Een push naar `main` staat binnen ongeveer een minuut live op Johans telefoon.
 
 ```bash
 git add index.html core.js   # de bestanden die je hebt gewijzigd
@@ -56,9 +56,9 @@ Wijzigingen in de live database en het opnieuw uitrollen van de Edge Function ra
 
 ## Opbouw
 
-**Twee bestanden.** `index.html` bevat alle HTML, CSS en het grootste deel van de JavaScript. `core.js` bevat de rekenregels die ook door de tests worden geladen: `LEVEL`, `SRS`, `shuffle()`, `personalDiff()`, `buildSessionCards()`, `normalizeAnswer()`, `levenshtein()` en `gradeAnswer()`. Die functies gebruiken globale variabelen uit `index.html` (`cards`, `settings`, `selectedCat`, `WORD_DB`, `isCardActive()`, `getCardType()`). Wil je verder opsplitsen, stel dat dan eerst voor. Zoek functies op naam, regelnummers verschuiven te snel om hier te noemen.
+**Drie bestanden.** `stories.js` bevat alleen gegevens (zie Verhalen). `index.html` bevat alle HTML, CSS en het grootste deel van de JavaScript. `core.js` bevat de rekenregels die ook door de tests worden geladen: `LEVEL`, `SRS`, `shuffle()`, `personalDiff()`, `buildSessionCards()`, `normalizeAnswer()`, `levenshtein()` en `gradeAnswer()`. Die functies gebruiken globale variabelen uit `index.html` (`cards`, `settings`, `selectedCat`, `WORD_DB`, `isCardActive()`, `getCardType()`). Wil je verder opsplitsen, stel dat dan eerst voor. Zoek functies op naam, regelnummers verschuiven te snel om hier te noemen.
 
-**Schermen.** Elk scherm is een `<div class="screen">`; `showScreen(id)` maakt er één zichtbaar. Schermen: `auth`, `home`, `session`, `result`, `progress`, `words`, `manage-words`, `word-form`, `settings`.
+**Schermen.** Elk scherm is een `<div class="screen">`; `showScreen(id)` maakt er één zichtbaar. Schermen: `auth`, `home`, `session`, `result`, `progress`, `stories`, `story`, `words`, `manage-words`, `word-form`, `settings`.
 
 **Opslag.** localStorage is de eerste bron, Supabase is de synchronisatie tussen apparaten.
 - `save(k, v)` / `load(k)` gebruiken localStorage met het voorvoegsel `polski_`.
@@ -82,6 +82,8 @@ Wijzigingen in de live database en het opnieuw uitrollen van de Edge Function ra
 - Richting (`getDir(mode)`): Luisteren is Pools → Nederlands; Typen en Zinnen zijn Nederlands → Pools; Flashcards en de slimme mix volgen de instelling.
 - De uitspraakknoppen laten Pools horen, ook als de vraag in het Nederlands staat: daar is de knop voor.
 - `checkExpansion()` voegt drie nieuwe woorden toe zodra 35% van de kaarten in box 3 of hoger zit.
+
+**Verhalen.** `STORIES` in `stories.js`: tien korte verhalen over het leven thuis met Johans gezin en schoonfamilie. Per verhaal `lines` (wie, Pools, Nederlands), `questions` (begripsvragen in het Pools), `cloze` (invulzinnen, nagekeken met `gradeAnswer()`) en `say` (één zin om hardop te zeggen). `STORY_GLOSS` geeft de betekenis van elk woord in de vorm waarin het in een verhaal staat; voeg je een verhaal toe, vul dan ook de nieuwe woorden aan. `openStory(id)` → `renderStory()` doorloopt de stappen `read`, `quiz`, `cloze`, `done`; `finishStory()` bewaart het resultaat in localStorage onder `stories_done` (alleen op dit apparaat, wel in de backup) en telt via `markPracticedToday()` mee voor de reeks van dagen.
 
 **Service Worker (`sw.js`).** Bewaart een kopie van de app zodat hij zonder internet opent: eerst het netwerk, bij geen verbinding de kopie. Verkeer met Supabase gaat er niet langs.
 

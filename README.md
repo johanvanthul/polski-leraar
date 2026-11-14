@@ -14,7 +14,7 @@ Persoonlijke Pools-Nederlands leerapp als PWA. Gebouwd voor gebruik op iPhone vi
 
 ## Technisch
 
-- `index.html` + `core.js` (vanilla JS, geen buildtool)
+- `index.html` + `core.js` + `stories.js` (vanilla JS, geen buildtool)
 - Hosting: GitHub Pages
 - Backend: Supabase (Auth, PostgreSQL, Edge Functions, pg_cron)
 

@@ -5,8 +5,8 @@
 // ─── Offline kopie ─────────────────────────────────────────────────────────
 // Werkwijze: eerst het netwerk proberen (je krijgt dus de nieuwste versie zodra
 // er verbinding is) en de kopie bijwerken; lukt het netwerk niet, dan de kopie.
-var CACHE = 'polski-leraar-v1';
-var APP_FILES = ['./', './core.js', './manifest.json', './icon.png', './icon-192.png'];
+var CACHE = 'polski-leraar-v2';
+var APP_FILES = ['./', './core.js', './stories.js', './manifest.json', './icon.png', './icon-192.png'];
 // Externe bestanden die de app nodig heeft om te starten (Supabase-bibliotheek, lettertypen)
 var CACHED_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 

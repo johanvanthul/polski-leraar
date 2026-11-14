@@ -81,6 +81,18 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
 .dir-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); }
 /* Kaart-schaduw voor sessie */
 .sess-card-shadow { box-shadow: 0 8px 22px rgba(120,90,60,.07); }
+/* Verhalen */
+.story-line { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; margin-bottom: 8px; transition: border-color .2s, box-shadow .2s; }
+.story-line.playing { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(74,144,217,.15); }
+.story-pl { font-size: 18px; font-weight: 600; line-height: 1.55; margin-top: 4px; }
+.story-nl { font-size: 13px; color: var(--text-muted); margin-top: 6px; line-height: 1.5; }
+.sw { border-radius: 5px; padding: 1px 0; cursor: pointer; }
+.sw.sel { background: var(--accent-soft); color: var(--accent); }
+.story-mini { min-width: 34px; height: 30px; padding: 0 8px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.story-opt { display: block; width: 100%; text-align: left; padding: 15px 18px; border-radius: 14px; background: var(--card); border: 1.5px solid var(--border); color: var(--text); font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.story-opt.right { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.story-opt.wrong { background: var(--red-soft); border-color: var(--red); color: var(--red); }
+#story-gloss { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + var(--safe-bottom)); width: calc(100% - 32px); max-width: 448px; background: var(--text); color: white; border-radius: 16px; padding: 12px 14px; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); z-index: 20; }
 </style>
 </head>
 <body>
@@ -151,6 +163,9 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <button onclick="startSession('smart')" style="width:100%;padding:14px;border-radius:14px;background:white;color:var(--accent);font-size:17px;font-weight:800;border:none;cursor:pointer;transition:opacity .15s;position:relative" onmousedown="this.style.opacity='.9'" onmouseup="this.style.opacity='1'">Oefen nu →</button>
     <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:10px;position:relative">app kiest de slimme mix voor je · <span id="cta-time">~6 min</span></div>
   </div>
+
+  <!-- Verhaal van vandaag -->
+  <div id="home-story"></div>
 
   <!-- Niveau-voortgangskaart -->
   <div id="level-progress-card" style="background:var(--card);border-radius:20px;padding:18px 18px;margin-bottom:14px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05)"></div>
@@ -246,6 +261,27 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
     <div style="font-size:20px;font-weight:800">Voortgang</div>
   </div>
   <div id="prog-content"></div>
+</div>
+
+<!-- VERHALEN: overzicht -->
+<div id="stories" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <button class="icon-btn" onclick="showScreen('home')" style="font-size:15px;font-weight:700">←</button>
+    <div style="font-size:20px;font-weight:800">Verhalen</div>
+  </div>
+  <div style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:16px">Korte verhalen over jullie leven thuis. Luister, lees mee en beantwoord daarna een paar vragen.</div>
+  <div id="stories-list"></div>
+</div>
+
+<!-- VERHALEN: één verhaal -->
+<div id="story" class="screen">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <button class="icon-btn" onclick="showScreen('stories')" style="font-size:13px;font-weight:700;color:var(--text-muted);flex-shrink:0">✕</button>
+    <div id="story-title" style="flex:1;min-width:0;font-size:18px;font-weight:800"></div>
+    <div id="story-step" style="font-size:13px;color:var(--text-muted);font-family:var(--mono);font-weight:600"></div>
+  </div>
+  <div id="story-body"></div>
+  <div id="story-gloss" style="display:none"></div>
 </div>
 
 <!-- WORDS -->
@@ -476,10 +512,11 @@ input, select { font-family: var(--font); outline: none; -webkit-appearance: non
       <button onclick="resetAllData()" class="data-btn" style="background:var(--red-soft);color:var(--red)">Reset</button>
     </div>
   </div>
-  <div style="text-align:center;padding:16px 0 8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)">Polski Leraar v5.2</div>
+  <div style="text-align:center;padding:16px 0 8px;font-size:11px;color:var(--text-dim);font-family:var(--mono)">Polski Leraar v5.3</div>
 </div>
 
 <script src="core.js"></script>
+<script src="stories.js"></script>
 <script>
 // ═══════════════════════════════════════
 // WORD DATABASE
@@ -674,11 +711,13 @@ function dateStr(ts) { return new Date(ts||Date.now()).toLocaleDateString('sv-SE
 // NAVIGATION
 // ═══════════════════════════════════════
 function showScreen(id) {
+  if (id !== 'story') { stopStoryAudio(); hideStoryGloss(); } // voorlezen stopt zodra je het verhaal verlaat
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if (id === 'home') renderHome();
   if (id === 'progress') renderProgress();
   if (id === 'words') renderWords();
+  if (id === 'stories') renderStories();
   if (id === 'settings') renderSettings();
 }
 function endSession() { showScreen('home'); }
@@ -767,6 +806,7 @@ function renderHome() {
   document.getElementById('btn-listen-sub').textContent = '~'+sz+' · hoor & vertaal';
   document.getElementById('btn-sentence-sub').textContent = '~'+sz+' zinnen';
 
+  renderHomeStory();
   renderCatPills('home-cats', selectedCat, function(c) { selectedCat = c; renderHome(); });
 }
 
@@ -1038,13 +1078,19 @@ function handleAnswer(correct) {
   }, 600);
 }
 
-function finishSession() {
-  var levelBefore = LEVEL.compute().code;
-  checkExpansion();
+// Telt vandaag mee voor de reeks van dagen; geldt voor een sessie en voor een gelezen verhaal
+function markPracticedToday() {
   var last = stats.lastSessionDate ? dateStr(stats.lastSessionDate) : null, today = dateStr(), yest = dateStr(Date.now() - 864e5);
   if (last === today) {} else if (last === yest) stats.streak++; else stats.streak = 1;
   stats.bestStreak = Math.max(stats.bestStreak, stats.streak);
-  stats.sessionsCompleted++; stats.lastSessionDate = Date.now();
+  stats.lastSessionDate = Date.now();
+}
+
+function finishSession() {
+  var levelBefore = LEVEL.compute().code;
+  checkExpansion();
+  markPracticedToday();
+  stats.sessionsCompleted++;
   var levelAfter = LEVEL.compute().code;
   sess.levelUp = levelBefore !== levelAfter ? levelAfter : null;
   save('stats', stats); save('cards', cards);
@@ -1576,7 +1622,7 @@ function resetAllData() {
   cards = WORD_DB.filter(function(w){return !w.pool;}).map(function(w){return makeCard(w);});
   mergeCustomWordsIntoCards(); // eigen woorden blijven bestaan, alleen hun voortgang begint opnieuw
   stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:dateStr()};
-  save('cards', cards); save('stats', stats);
+  save('cards', cards); save('stats', stats); save('stories_done', {});
   if (sb && sbUser) {
     sb.from('user_cards').delete().eq('user_id', sbUser.id).then(function(){});
     sb.from('user_stats').delete().eq('user_id', sbUser.id).then(function(){});
@@ -1589,7 +1635,7 @@ function resetAllData() {
 // EXPORT / IMPORT
 // ═══════════════════════════════════════
 function exportData() {
-  var data = { version: 3, exportDate: new Date().toISOString(), cards: cards, stats: stats, settings: settings, customWords: customWords };
+  var data = { version: 3, exportDate: new Date().toISOString(), cards: cards, stats: stats, settings: settings, customWords: customWords, storiesDone: storiesDone() };
   var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a'); a.href = url; a.download = 'polski-leraar-backup-'+dateStr()+'.json';
@@ -1616,6 +1662,7 @@ function importData(event) {
         var maxId = customWords.reduce(function(m,w){ return Math.max(m, w.id||0); }, 0);
         if (maxId >= (load('next_custom_id') || 10000)) save('next_custom_id', maxId + 1);
       }
+      if (data.storiesDone) save('stories_done', data.storiesDone);
       mergeCustomWordsIntoCards();
       save('cards', cards); save('stats', stats); save('settings', settings);
       if (sbUser) { save('replace_cloud', true); sbReplaceCloud(); }
@@ -1851,11 +1898,14 @@ function getVoiceStatusLabel() {
   return 'Stemmen worden geladen...';
 }
 
-function speak(text, lang) {
+var currentUtterance = null; // vastgehouden zodat de browser hem niet opruimt voordat hij klaar is
+function speak(text, lang, onEnd) {
   if (!('speechSynthesis' in window)) return;
   try {
     window.speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance(text);
+    currentUtterance = u;
+    if (onEnd) u.onend = onEnd;
     u.lang = lang || 'pl-PL';
     u.rate = 0.82;
     if (!lang && polishVoice) u.voice = polishVoice;
@@ -2000,7 +2050,7 @@ async function sbSyncDown() {
       stats = {streak:0,bestStreak:0,totalReviews:0,todayReviews:0,todayCorrect:0,lastSessionDate:null,wordsLearned:0,sessionsCompleted:0,todayDate:dateStr()};
       customWords = [];
       save('cards', cards); save('stats', stats); save('custom_words', customWords);
-      save('daily_history', {}); save('synced_custom_ids', []); save('deleted_custom_ids', []); save('replace_cloud', false);
+      save('daily_history', {}); save('stories_done', {}); save('synced_custom_ids', []); save('deleted_custom_ids', []); save('replace_cloud', false);
     }
     save('owner', sbUser.id);
 
@@ -2252,6 +2302,284 @@ function sbAuthMsg(msg, ok) {
 }
 function sbAuthLoading(on) {
   document.getElementById('auth-spinner').style.display = on ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════
+// VERHALEN
+// ═══════════════════════════════════════
+// Een verhaal doorloop je in vier stappen: lezen en luisteren ('read'), begripsvragen ('quiz'),
+// invulzinnen ('cloze') en de afsluiting ('done'). Welke verhalen af zijn staat in localStorage
+// onder 'stories_done' en blijft op dit apparaat.
+var storyState = null;
+var storyPlayToken = 0; // wordt opgehoogd om het voorlezen van een heel verhaal af te breken
+var SPEAKER_COLORS = {Johan:'#D9543B', Kasia:'#1F9D62', Patryk:'#4A90D9', Daniel:'#8A63C9', Maria:'#C2851B', Wojtek:'#4A7B9D'};
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function storiesDone() { return load('stories_done') || {}; }
+function nextStory() { var d = storiesDone(); return STORIES.find(function(s){ return !d[s.id]; }) || null; }
+function storiesDoneCount() { var d = storiesDone(); return STORIES.filter(function(s){ return d[s.id]; }).length; }
+
+function renderHomeStory() {
+  var el = document.getElementById('home-story'); if (!el) return;
+  var s = nextStory(), n = storiesDoneCount();
+  var title = s ? s.title : 'Alle verhalen gelezen';
+  var sub = s ? s.nl + ' · ~3 min' : 'Lees er een opnieuw om te herhalen';
+  var action = s ? 'openStory('+s.id+')' : "showScreen('stories')";
+  el.innerHTML =
+    '<div onclick="'+action+'" style="background:var(--card);border-radius:20px;padding:16px 18px;margin-bottom:14px;border:1px solid var(--border);box-shadow:0 4px 12px rgba(120,90,60,.05);cursor:pointer">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px">Verhaal '+(s ? 'van vandaag' : '')+'</div>'
+        +'<button onclick="event.stopPropagation();showScreen(\'stories\')" style="background:none;font-size:12px;font-weight:600;color:var(--text-muted);padding:2px 0">'+n+'/'+STORIES.length+' gelezen ›</button>'
+      +'</div>'
+      +'<div style="font-size:18px;font-weight:800;color:var(--text)">'+escHtml(title)+'</div>'
+      +'<div style="font-size:13px;color:var(--text-muted);margin-top:2px">'+escHtml(sub)+'</div>'
+    +'</div>';
+}
+
+function renderStories() {
+  var d = storiesDone(), next = nextStory();
+  document.getElementById('stories-list').innerHTML = STORIES.map(function(s, i) {
+    var done = d[s.id], isNext = next && next.id === s.id;
+    var mark = done
+      ? '<div style="width:32px;height:32px;border-radius:16px;background:var(--green-soft);color:var(--green);display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0">✓</div>'
+      : '<div style="width:32px;height:32px;border-radius:16px;background:'+(isNext?'var(--accent)':'var(--bg)')+';color:'+(isNext?'white':'var(--text-muted)')+';border:1px solid '+(isNext?'var(--accent)':'var(--border)')+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">'+(i+1)+'</div>';
+    return '<div class="word-item" onclick="openStory('+s.id+')" style="display:flex;align-items:center;gap:14px;margin-bottom:10px">'
+      + mark
+      +'<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700">'+escHtml(s.title)+'</div>'
+      +'<div style="font-size:12px;color:var(--text-muted);margin-top:2px">'+escHtml(s.nl)+(done ? ' · '+done.score+'/'+done.total+' goed' : '')+'</div></div>'
+      +'<div style="color:var(--text-dim);font-size:18px">›</div></div>';
+  }).join('');
+}
+
+function openStory(id) {
+  var s = STORIES.find(function(x){ return x.id === id; }); if (!s) return;
+  stopStoryAudio();
+  storyState = {story: s, stage: 'read', qIdx: 0, cIdx: 0, correct: 0, looked: [], playing: false};
+  showScreen('story'); renderStory(); window.scrollTo(0, 0);
+}
+
+function stopStoryAudio() {
+  storyPlayToken++;
+  if (storyState) storyState.playing = false;
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  document.querySelectorAll('.story-line.playing').forEach(function(el){ el.classList.remove('playing'); });
+  var b = document.getElementById('story-play-btn'); if (b) b.textContent = '▶ Luister naar het hele verhaal';
+}
+
+function storySetStage(stage) {
+  stopStoryAudio(); hideStoryGloss();
+  storyState.stage = stage; renderStory(); window.scrollTo(0, 0);
+}
+
+function renderStory() {
+  var st = storyState, s = st.story, body = document.getElementById('story-body');
+  var total = s.questions.length + s.cloze.length;
+  document.getElementById('story-title').textContent = s.title;
+  var stepNo = {read: 1, quiz: 2, cloze: 3, done: 4}[st.stage];
+  document.getElementById('story-step').textContent = stepNo < 4 ? stepNo + '/3' : '';
+
+  if (st.stage === 'read') {
+    body.innerHTML =
+      '<div style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:14px">'+escHtml(s.scene)+'</div>'
+      +'<button id="story-play-btn" onclick="playStory()" style="width:100%;padding:12px;border-radius:14px;background:rgba(74,144,217,.1);border:1.5px solid rgba(74,144,217,.3);color:var(--blue);font-size:14px;font-weight:700;margin-bottom:6px">▶ Luister naar het hele verhaal</button>'
+      +'<div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:14px">Tik op een woord voor de betekenis · NL toont de hele zin</div>'
+      + s.lines.map(function(l, i) {
+          var color = SPEAKER_COLORS[l[0]] || 'var(--text-muted)';
+          var words = l[1].split(/([\p{L}]+)/u).map(function(part, k) {
+            return k % 2 ? '<span class="sw" onclick="storyWord(this)">'+escHtml(part)+'</span>' : escHtml(part);
+          }).join('');
+          return '<div class="story-line" id="sl-'+i+'">'
+            +'<div style="display:flex;justify-content:space-between;align-items:center">'
+              +'<div style="font-size:11px;font-weight:700;color:'+color+';text-transform:uppercase;letter-spacing:.8px">'+escHtml(l[0])+'</div>'
+              +'<div style="display:flex;gap:6px">'
+                +'<button class="story-mini" onclick="speakStoryLine('+i+')" title="Luister">♪</button>'
+                +'<button class="story-mini" onclick="toggleStoryNl('+i+')" title="Vertaling">NL</button>'
+              +'</div></div>'
+            +'<div class="story-pl">'+words+'</div>'
+            +'<div class="story-nl" id="sn-'+i+'" style="display:none">'+escHtml(l[2])+'</div>'
+          +'</div>';
+        }).join('')
+      +'<button class="big-btn" onclick="storySetStage(\'quiz\')" style="background:var(--accent);justify-content:center;margin-top:18px;font-size:16px;font-weight:700">Naar de vragen →</button>';
+  }
+
+  else if (st.stage === 'quiz') {
+    var q = s.questions[st.qIdx];
+    body.innerHTML =
+      '<div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Vraag '+(st.qIdx+1)+' van '+s.questions.length+'</div>'
+      +'<div class="sess-card-shadow" style="background:var(--card);border-radius:20px;padding:22px 20px;border:1px solid var(--border);margin-bottom:14px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+          +'<div style="font-size:20px;font-weight:800;line-height:1.3">'+escHtml(q.q)+'</div>'
+          +'<button class="story-mini" id="story-q-speak">♪</button>'
+        +'</div>'
+        +'<div id="story-q-nl" style="display:none;font-size:13px;color:var(--text-muted);margin-top:8px">'+escHtml(q.nl)+'</div>'
+      +'</div>'
+      + q.options.map(function(o, i) {
+          return '<button class="story-opt" id="so-'+i+'" onclick="answerStoryQuestion('+i+')">'+escHtml(o)+'</button>';
+        }).join('')
+      +'<div id="story-next"></div>';
+    document.getElementById('story-q-speak').onclick = function(){ speak(q.q); };
+  }
+
+  else if (st.stage === 'cloze') {
+    var c = s.cloze[st.cIdx];
+    var shown = escHtml(c.pl).replace('___', '<span style="display:inline-block;min-width:70px;border-bottom:2.5px solid var(--accent);margin:0 2px">&nbsp;</span>');
+    body.innerHTML =
+      '<div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Vul in · '+(st.cIdx+1)+' van '+s.cloze.length+'</div>'
+      +'<div class="sess-card-shadow" style="background:var(--card);border-radius:20px;padding:22px 20px;border:1px solid var(--border);margin-bottom:14px">'
+        +'<div id="story-cloze-pl" style="font-size:22px;font-weight:800;line-height:1.4">'+shown+'</div>'
+        +'<div style="font-size:13px;color:var(--text-muted);margin-top:8px">'+escHtml(c.nl)+'</div>'
+      +'</div>'
+      +'<div id="story-cloze-input">'
+        +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+          +'<input id="story-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Typ het ontbrekende woord..." '
+            +'style="flex:1;min-width:0;padding:14px 16px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);color:var(--text);font-size:16px">'
+          +'<button onclick="submitStoryCloze()" style="padding:0 18px;border-radius:14px;background:var(--accent);color:white;font-size:16px;font-weight:700">→</button>'
+        +'</div>'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">'
+          + 'ąćęłńóśźż'.split('').map(function(ch){ return '<button class="pl-char-btn" onclick="insertStoryChar(\''+ch+'\')">'+ch+'</button>'; }).join('')
+        +'</div>'
+        +'<button onclick="submitStoryCloze(true)" style="background:none;color:var(--text-muted);font-size:13px;font-weight:600;padding:6px 0">Weet ik niet</button>'
+      +'</div>'
+      +'<div id="story-next"></div>';
+    var inp = document.getElementById('story-input');
+    inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') submitStoryCloze(); });
+  }
+
+  else if (st.stage === 'done') {
+    var looked = st.looked.length
+      ? '<div style="background:var(--card);border-radius:16px;padding:16px 18px;border:1px solid var(--border);margin-bottom:14px;text-align:left">'
+          +'<div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Woorden die je opzocht</div>'
+          + st.looked.map(function(w){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:14px"><span style="font-weight:700">'+escHtml(w)+'</span><span style="color:var(--text-muted);text-align:right">'+escHtml(STORY_GLOSS[w] || '')+'</span></div>'; }).join('')
+        +'</div>'
+      : '';
+    var nxt = nextStory();
+    body.innerHTML =
+      '<div style="text-align:center;padding-top:8px">'
+        +'<div style="font-size:26px;font-weight:800;margin-bottom:4px">Verhaal gelezen!</div>'
+        +'<div style="font-size:14px;color:var(--text-muted);margin-bottom:20px">'+st.correct+' van '+total+' goed</div>'
+        +'<div style="background:var(--accent-soft);border-radius:20px;padding:20px;border:1px solid rgba(217,84,59,.2);margin-bottom:14px">'
+          +'<div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Zeg deze zin drie keer hardop</div>'
+          +'<div style="font-size:21px;font-weight:800;line-height:1.35">'+escHtml(s.say.pl)+'</div>'
+          +'<div style="font-size:13px;color:var(--text-muted);margin-top:6px">'+escHtml(s.say.nl)+'</div>'
+          +'<button id="story-say-btn" style="margin-top:14px;background:white;border:1.5px solid rgba(217,84,59,.3);color:var(--accent);border-radius:50%;width:52px;height:52px;font-size:20px">♪</button>'
+          +'<div style="font-size:12px;color:var(--text-muted);margin-top:10px">En gebruik hem vandaag één keer echt, thuis.</div>'
+        +'</div>'
+        + looked
+        +(nxt ? '<button class="big-btn" onclick="openStory('+nxt.id+')" style="background:var(--accent);justify-content:center;font-size:16px;font-weight:700;margin-bottom:10px">Volgend verhaal →</button>' : '')
+        +'<button class="big-btn" onclick="showScreen(\'home\')" style="background:var(--card);color:var(--text);border:1.5px solid var(--border);justify-content:center;font-size:15px;font-weight:600">Klaar voor vandaag</button>'
+      +'</div>';
+    document.getElementById('story-say-btn').onclick = function(){ speak(s.say.pl); };
+  }
+}
+
+// ── Lezen en luisteren ──
+function speakStoryLine(i) { stopStoryAudio(); speak(storyState.story.lines[i][1]); }
+function toggleStoryNl(i) { var el = document.getElementById('sn-'+i); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+
+function playStory() {
+  if (storyState.playing) { stopStoryAudio(); return; }
+  if (!('speechSynthesis' in window)) return;
+  var token = ++storyPlayToken, lines = storyState.story.lines, i = 0;
+  storyState.playing = true;
+  document.getElementById('story-play-btn').textContent = '■ Stop';
+  function next() {
+    if (token !== storyPlayToken) return; // gestopt of ander verhaal geopend
+    document.querySelectorAll('.story-line.playing').forEach(function(el){ el.classList.remove('playing'); });
+    if (i >= lines.length) { stopStoryAudio(); return; }
+    var el = document.getElementById('sl-'+i);
+    if (el) { el.classList.add('playing'); el.scrollIntoView({block: 'center', behavior: 'smooth'}); }
+    speak(lines[i][1], null, function() { i++; setTimeout(next, 400); });
+  }
+  next();
+}
+
+function storyWord(span) {
+  var word = span.textContent, key = word.toLowerCase(), meaning = STORY_GLOSS[key];
+  document.querySelectorAll('.sw.sel').forEach(function(el){ el.classList.remove('sel'); });
+  span.classList.add('sel');
+  if (meaning && storyState.looked.indexOf(key) === -1) storyState.looked.push(key);
+  var box = document.getElementById('story-gloss');
+  box.innerHTML =
+    '<div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:800">'+escHtml(word)+'</div>'
+    +'<div style="font-size:13px;opacity:.85;margin-top:2px">'+escHtml(meaning || 'Geen losse vertaling. Tik op NL voor de hele zin.')+'</div></div>'
+    +'<button id="story-gloss-speak" style="background:rgba(255,255,255,.15);color:white;width:40px;height:40px;border-radius:20px;font-size:16px;flex-shrink:0">♪</button>'
+    +'<button onclick="hideStoryGloss()" style="background:none;color:white;opacity:.7;font-size:16px;padding:8px 4px;flex-shrink:0">✕</button>';
+  document.getElementById('story-gloss-speak').onclick = function(){ stopStoryAudio(); speak(word); };
+  box.style.display = 'flex';
+}
+function hideStoryGloss() {
+  var box = document.getElementById('story-gloss'); if (box) box.style.display = 'none';
+  document.querySelectorAll('.sw.sel').forEach(function(el){ el.classList.remove('sel'); });
+}
+
+// ── Vragen ──
+function storyNextButton(label, action) {
+  document.getElementById('story-next').innerHTML =
+    '<button class="big-btn anim-slide" onclick="'+action+'" style="background:var(--accent);justify-content:center;margin-top:14px;font-size:16px;font-weight:700">'+label+'</button>';
+}
+
+function answerStoryQuestion(i) {
+  var st = storyState, q = st.story.questions[st.qIdx];
+  if (st.answered) return;
+  st.answered = true;
+  if (i === q.a) st.correct++;
+  q.options.forEach(function(o, k) {
+    var b = document.getElementById('so-'+k);
+    b.disabled = true;
+    if (k === q.a) b.classList.add('right'); else if (k === i) b.classList.add('wrong');
+  });
+  document.getElementById('story-q-nl').style.display = 'block';
+  storyNextButton('Verder →', 'nextStoryQuestion()');
+}
+function nextStoryQuestion() {
+  var st = storyState; st.answered = false;
+  if (st.qIdx < st.story.questions.length - 1) { st.qIdx++; renderStory(); window.scrollTo(0, 0); }
+  else storySetStage('cloze');
+}
+
+// ── Invulzinnen ──
+function insertStoryChar(ch) {
+  var inp = document.getElementById('story-input'); if (!inp) return;
+  var s = inp.selectionStart, e = inp.selectionEnd;
+  inp.value = inp.value.slice(0, s) + ch + inp.value.slice(e);
+  inp.selectionStart = inp.selectionEnd = s + 1; inp.focus();
+}
+
+function submitStoryCloze(giveUp) {
+  var st = storyState, c = st.story.cloze[st.cIdx];
+  if (st.answered) return;
+  var typed = giveUp ? '' : document.getElementById('story-input').value;
+  if (!giveUp && !typed.trim()) return;
+  st.answered = true;
+  var res = giveUp ? {correct: false, exact: false} : gradeAnswer(c.a, typed);
+  if (res.correct) st.correct++;
+  var full = c.pl.replace('___', c.a);
+  var color = res.correct ? 'var(--green)' : 'var(--red)';
+  document.getElementById('story-cloze-pl').innerHTML =
+    escHtml(c.pl).replace('___', '<span style="color:'+color+';border-bottom:2.5px solid '+color+'">'+escHtml(c.a)+'</span>');
+  var note = res.correct
+    ? (res.exact ? '✓ Goed!' : '✓ Bijna goed. Let op de spelling: je typte „'+escHtml(typed.trim())+'”.')
+    : (giveUp ? 'Het woord was: ' : '✗ Je typte „'+escHtml(typed.trim())+'”. Het woord was: ')+'<b>'+escHtml(c.a)+'</b>';
+  document.getElementById('story-cloze-input').innerHTML =
+    '<div style="padding:12px 14px;border-radius:12px;font-size:14px;font-weight:600;color:'+color+';background:'+(res.correct?'var(--green-soft)':'var(--red-soft)')+'">'+note+'</div>';
+  if (settings.autoSpeak) speak(full);
+  storyNextButton(st.cIdx < st.story.cloze.length - 1 ? 'Verder →' : 'Afronden →', 'nextStoryCloze()');
+}
+function nextStoryCloze() {
+  var st = storyState; st.answered = false;
+  if (st.cIdx < st.story.cloze.length - 1) { st.cIdx++; renderStory(); window.scrollTo(0, 0); }
+  else finishStory();
+}
+
+function finishStory() {
+  var st = storyState, s = st.story, d = storiesDone();
+  d[s.id] = {date: dateStr(), score: st.correct, total: s.questions.length + s.cloze.length};
+  save('stories_done', d);
+  // Een gelezen verhaal telt als oefenen vandaag
+  markPracticedToday();
+  save('stats', stats);
+  sbSyncUp();
+  storySetStage('done');
 }
 
 // ═══════════════════════════════════════

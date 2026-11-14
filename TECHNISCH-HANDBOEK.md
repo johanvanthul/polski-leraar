@@ -209,6 +209,7 @@ De app valt automatisch terug op localStorage — je kunt altijd blijven oefenen
 polski-leraar/
 ├── index.html                  # De app (schermen, opmaak, bediening)
 ├── core.js                     # De rekenregels (niveaus, herhaling, sessies, antwoordcontrole)
+├── stories.js                  # De verhalen en de betekenis van de woorden erin
 ├── sw.js                       # Service Worker — offline kopie van de app + pushmeldingen
 ├── manifest.json               # Naam, icoon en kleuren voor "Zet op beginscherm"
 ├── icon.png, icon-192.png      # App-icoon (512 en 192 pixels)
@@ -297,6 +298,7 @@ supabase functions deploy send-reminders --project-ref elcrpgsiyiehxjoerkiu
 | 14 mei 2026 | v3.7 | Web Push via Service Worker (sw.js) + Supabase Edge Function (send-reminders); VAPID-sleutels gegenereerd; push subscription opgeslagen in Supabase |
 | 14 mei 2026 | v3.8 | Push-subscriptionbugs gefixed: race condition (swReady Promise), update→upsert, uitgebreide [SW]/[Push] debug-logging |
 | 13 november 2026 | v5.2 | Rekenregels naar `core.js` zodat de tests de echte code controleren; app opent zonder internet; backup bevat eigen woorden en wint van de cloud; verwijderd eigen woord verdwijnt op alle apparaten; typen telt elke eerdere oefening; streak zakt direct na een gemiste dag; herinnering per kwartier; kleinere iconen; oude documenten verwijderd |
+| 14 november 2026 | v5.3 | Verhalen: tien korte verhalen over het leven thuis, met voorlezen, woordbetekenis bij tikken, begripsvragen, invulzinnen en een zin om hardop te zeggen; een gelezen verhaal telt mee voor de reeks van dagen |
 | 12 november 2026 | v5.1 | Opschoning: voortgang van offline sessies blijft behouden bij synchroniseren; zinnen-modus blijft Nederlands → Pools; elk alternatief rond "/" telt als goed antwoord; reminder uitzetten of verzetten gaat direct naar de server; dagteller begint opnieuw na middernacht; documentatie bijgewerkt |
 | juni 2026 | v4.0–v5.0 | Betrouwbare sync, slimme sessiemix, woordenlijst met zoeken en filters, eigen woorden, zinnen en patronen, tests, stille modus, nieuw licht ontwerp (zie `git log`) |
 | 14 mei 2026 | — | Edge Function timezone-fix: now.getHours() was UTC, reminder_time is Amsterdam-tijd (CEST=UTC+2); fix via Intl.DateTimeFormat('Europe/Amsterdam'); absolute tijdsverschil met middernacht-omloop; ±10min venster; volledige beslissingslog in response |
